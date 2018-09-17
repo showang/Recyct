@@ -1,0 +1,100 @@
+apply plugin: 'com.android.library'
+apply plugin: 'com.github.dcendents.android-maven'
+group = 'com.github.showang'
+
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'jacoco'
+
+android {
+    compileSdkVersion 28
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion 28
+        versionCode 1
+        versionName "0.0.1"
+
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        debug {
+            testCoverageEnabled = true
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    testOptions {
+        unitTests {
+            returnDefaultValues true
+
+            includeAndroidResources = true
+        }
+    }
+
+}
+
+ext {
+    supportLibraryVersion = "28.0.0-rc02"
+    anko_version = '0.10.4'
+    coverageSourceDirs = 'src/test/java'
+    powermock_version = '2.0.0-beta.5'
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation "com.android.support:appcompat-v7:$supportLibraryVersion"
+    implementation "com.android.support:support-v4:$supportLibraryVersion"
+    implementation "com.android.support:design:$supportLibraryVersion"
+    implementation "com.android.support:recyclerview-v7:$supportLibraryVersion"
+    testImplementation 'junit:junit:4.12'
+    testImplementation "org.mockito:mockito-core:2.22.0"
+
+    testImplementation "org.powermock:powermock-api-mockito2:$powermock_version"
+    testImplementation "org.powermock:powermock-module-junit4:$powermock_version"
+    testImplementation "org.powermock:powermock-module-junit4-rule:$powermock_version"
+    testImplementation "org.powermock:powermock-classloading-xstream:$powermock_version"
+
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+}
+
+task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
+    group = "Reporting"
+    description = "Generate Jacoco coverage reports for Debug build"
+
+    reports {
+        xml.enabled = true
+        html.enabled = true
+    }
+
+    classDirectories = fileTree(
+            dir: "$buildDir/tmp/kotlin-classes/debug",
+            excludes: ['**/R.class',
+                       '**/R$*.class',
+                       '**/*$ViewBinder*.*',
+                       '**/*$InjectAdapter*.*',
+                       '**/*Injector*.*',
+                       '**/BuildConfig.*',
+                       '**/Manifest*.*',
+                       '**/*Test*.*',
+                       '**/*Activity*.*',
+                       '**/CiMattersApplication*.*',
+                       'android/**/*.*']
+    )
+
+    additionalSourceDirs = files(coverageSourceDirs)
+    sourceDirectories = files('src/main/java')
+    executionData = files("$buildDir/jacoco/testDebugUnitTest.exec")
+}

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Recyct Example</string>
+
+    <string name="label_header">This is header with data: %s</string>
+    <string name="label_footer">This is footer with data: %s</string>
+    <string name="label_item">[%1$s] Text for string data: %2$s</string>
+</resources>
