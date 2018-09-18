@@ -4,7 +4,7 @@
 A library which helps you build recycler view easier.
 
 # Usage
-There are two cases in usage.
+There are two cases.
 
 ## General Case
 Create reuseable RecyctItems and register to RecyctAdapter.
@@ -43,7 +43,7 @@ class MyRecyctItem : RecyctItemBase() {
 ```
 
 ## Multi ViewHolder Types
-Create custom adapter to handle view holder type.
+Create custom adapter to handle multiple view holder type.
 ```kotlin
 class ExampleAdapter(private val dataSource1: List<Int>,
                      private val dataSource2: List<String>): RecyctAdapter(dataSource1, dataSource2) {
