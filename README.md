@@ -4,6 +4,10 @@
 A library which helps you build recycler view easier.
 
 # Usage
+There are two cases in usage.
+
+## General Case
+Create reuseable RecyctItems and register to RecyctAdapter.
 
 ### Adapter
 ```kotlin
@@ -38,7 +42,8 @@ class MyRecyctItem : RecyctItemBase() {
 }
 ```
 
-## Multi View Holder Type
+## Multi ViewHolder Types
+Create custom adapter to handle view holder type.
 ```kotlin
 class ExampleAdapter(private val dataSource1: List<Int>,
                      private val dataSource2: List<String>): RecyctAdapter(dataSource1, dataSource2) {
@@ -73,15 +78,17 @@ maven
 sbt
 leiningen
 Add it in your root build.gradle at the end of repositories:
-
+```gradle
 	allprojects {
 		repositories {
 			...
 			maven { url 'https://jitpack.io' }
 		}
 	}
+```
 ## Step 2. Add the dependency
-
+```gradle
 	dependencies {
 	        implementation 'com.github.showang:Recyct:0.0.1'
 	}
+```
