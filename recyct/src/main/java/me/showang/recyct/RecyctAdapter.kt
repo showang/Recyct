@@ -68,8 +68,10 @@ open class RecyctAdapter(vararg val dataGroup: List<Any>) : RecyclerView.Adapter
         footerItem = null
     }
 
-    fun defaultLoadMore(callback: (() -> Unit)) {
-        loadMoreItem = DefaultLoadMoreItem(callback)
+    fun defaultLoadMore(loadMoreCallback: (() -> Unit)) {
+        loadMoreItem = DefaultLoadMoreItem(loadMoreCallback) {
+            isLoadMoreFail = false
+        }
     }
 
     protected open fun customViewHolderTypes(dataIndex: Int): Int {
@@ -94,7 +96,9 @@ open class RecyctAdapter(vararg val dataGroup: List<Any>) : RecyclerView.Adapter
         }
         val dataSize = dataLength
         return when (position) {
-            0 -> headerItem?.run { TYPE_HEADER } ?: customType(position)
+            0 -> headerItem?.run { TYPE_HEADER }
+                    ?: if (dataSize == 0) lastItemType(position, customType)
+                    else customType(position)
             dataSize -> headerItem?.run { customType(position) }
                     ?: lastItemType(position, customType)
             dataSize + 1 -> lastItemType(position, customType)
@@ -134,8 +138,8 @@ open class RecyctAdapter(vararg val dataGroup: List<Any>) : RecyclerView.Adapter
     final override fun onBindViewHolder(holder: RecyclerView.ViewHolder, itemIndex: Int) {
         val vh = holder as? RecyctViewHolder ?: throw Error("ViewHolder is not a RecycHolder")
         val dataIndexPair = when (getItemViewType(itemIndex)) {
-            TYPE_HEADER -> headerItem?.initData?.let { Pair(it, itemIndex) }
-            TYPE_FOOTER -> footerItem?.initData?.let { Pair(it, itemIndex) }
+            TYPE_HEADER -> headerItem!!.initData?.let { Pair(it, itemIndex) }
+            TYPE_FOOTER -> footerItem!!.initData?.let { Pair(it, itemIndex) }
             TYPE_LOAD_MORE -> Pair(isLoadMoreFail, itemIndex)
             else -> dataIndex(itemIndex).let { Pair(unionData[it], it) }
         }

@@ -43,6 +43,7 @@ class RecyctAdapterTest {
         header = mock(RecyctItem::class.java)
         footer = mock(RecyctItem::class.java)
         inflater = mockLayoutInflater(parent)
+        `when`(itemView.context).thenReturn(context)
     }
 
     @Test
@@ -58,7 +59,6 @@ class RecyctAdapterTest {
 
     @Test
     fun testRegister() {
-        mockLayoutInflater(parent)
         adapter = object : RecyctAdapter(data) {
             override fun customViewHolderTypes(dataIndex: Int): Int {
                 return dataIndex % 2
@@ -76,6 +76,27 @@ class RecyctAdapterTest {
             if (index % 2 == 0) assert(vh.clickDelegate == delegateEven)
             else assert(vh.clickDelegate == delegateOdd)
         }
+
+    }
+
+    @Test
+    fun testRegister_itemClick() {
+        adapter = object : RecyctAdapter(data) {
+            override fun customViewHolderTypes(dataIndex: Int): Int {
+                return dataIndex % 2
+            }
+        }
+        var click = false
+        val delegate: (Any, Int) -> Unit = { _, _ -> click = true }
+        adapter.register(defaultRecyctItem(), 0, delegate)
+
+        adapter.bindViewHolder(adapter.createViewHolder(parent, adapter.getItemViewType(0)) as RecyctViewHolder, 0)
+
+        verify(itemView).setOnClickListener(argThat {
+            it?.onClick(itemView)
+            true
+        })
+        assert(click)
     }
 
     @Test
@@ -141,7 +162,6 @@ class RecyctAdapterTest {
     @Test
     fun testCreateViewHolder_default() {
         val clickDelegate: (Any, Int) -> Unit = { _, _ -> }
-        mockLayoutInflater(parent)
         adapter.also(::mockAdapter)
 
         try {
@@ -162,7 +182,6 @@ class RecyctAdapterTest {
     fun testCreateViewHolder_header() {
         val headerData = "This is header."
         val clickDelegate: (Any, Int) -> Unit = { _, _ -> }
-        mockLayoutInflater(parent)
         header = defaultRecyctItem()
         adapter.registerHeader(header, headerData, clickDelegate)
         val headerVh = adapter.onCreateViewHolder(parent, RecyctAdapter.TYPE_HEADER) as RecyctViewHolder
@@ -182,7 +201,6 @@ class RecyctAdapterTest {
     fun testCreateViewHolder_footer() {
         val footerData = "This is footer."
         val clickDelegate: (Any, Int) -> Unit = { _, _ -> }
-        mockLayoutInflater(parent)
         footer = defaultRecyctItem()
         adapter.registerFooter(footer, footerData, clickDelegate)
         val footerVh = adapter.onCreateViewHolder(parent, RecyctAdapter.TYPE_FOOTER) as RecyctViewHolder
@@ -205,8 +223,9 @@ class RecyctAdapterTest {
 
     @Test
     fun testCreateViewHolder_loadMore() {
-        mockLayoutInflater(parent)
         adapter.defaultLoadMore { }
+        `when`(itemView.findViewById<View>(R.id.progress)).thenReturn(mock(View::class.java))
+        `when`(itemView.findViewById<View>(R.id.retryButton)).thenReturn(mock(View::class.java))
         val footerVh = adapter.onCreateViewHolder(parent, RecyctAdapter.TYPE_LOAD_MORE) as RecyctViewHolder
         assert(footerVh.parentItem is DefaultLoadMoreItem)
     }
@@ -217,7 +236,11 @@ class RecyctAdapterTest {
         val vh = recyctViewHolder(inflater, parent) { data, atIndex ->
             assert(data as Int == atIndex)
         }
-        initData.forEach { adapter.bindViewHolder(vh, it) }
+        initData.forEach {
+            adapter.bindViewHolder(vh, it)
+            assert(vh.currentItemIndex == it)
+            assert(vh.currentData == it)
+        }
 
         val headerVh = recyctViewHolder(inflater, parent) { _, atIndex ->
             assert(0 == atIndex)
@@ -272,7 +295,10 @@ class RecyctAdapterTest {
     @Test
     fun testBindViewHolder_loadMore() {
         var startLoadMore = false
-        mockLayoutInflater(parent)
+        val progress = mock(View::class.java)
+        val retryButton = mock(View::class.java)
+        `when`(itemView.findViewById<View>(R.id.progress)).thenReturn(progress)
+        `when`(itemView.findViewById<View>(R.id.retryButton)).thenReturn(retryButton)
 
         adapter.apply {
             register(object : RecyctItemBase("load more") {
@@ -294,9 +320,29 @@ class RecyctAdapterTest {
             it.run()
             true
         })
+        verify(retryButton).setOnClickListener(argThat {
+            it?.onClick(retryButton)
+            true
+        })
         assert(startLoadMore)
 
         adapter.isLoadMoreFail = true
+        (0..(itemCount - 1)).map {
+            adapter.createViewHolder(parent, adapter.getItemViewType(it))
+        }.forEachIndexed { index, inVh -> adapter.bindViewHolder(inVh, index) }
+    }
+
+    @Test
+    fun testBindViewHolder_invalid() {
+        val initData = data
+        val vh = object : RecyclerView.ViewHolder(itemView) {}
+
+        try {
+            initData.forEach { adapter.bindViewHolder(vh, it) }
+            assert(false) { "ViewHolder must be RecyctViewHolder" }
+        } catch (e: Error) {
+            assert(e.message == "ViewHolder is not a RecycHolder")
+        }
     }
 
     @Test
@@ -307,7 +353,8 @@ class RecyctAdapterTest {
 
     @Test
     fun testBindViewHolder_noCallback() {
-        mockLayoutInflater(parent)
+        `when`(itemView.findViewById<View>(R.id.progress)).thenReturn(mock(View::class.java))
+        `when`(itemView.findViewById<View>(R.id.retryButton)).thenReturn(mock(View::class.java))
 
         adapter.apply {
             register(object : RecyctItemBase() {
@@ -342,6 +389,25 @@ class RecyctAdapterTest {
 //        }, argThat { last ->
 //            last == 51 + 51
 //        })
+    }
+
+    @Test
+    fun testBindFooter_noData() {
+        var isBind = false
+        data.clear()
+        adapter.registerFooter(object : RecyctItemBase() {
+            override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
+                return object : RecyctViewHolder(inflater, parent, 0) {
+                    override fun bind(data: Any, atIndex: Int) {
+                        isBind = data as Boolean
+                        assert(context == context)
+                    }
+                }
+            }
+
+        }, true)
+        adapter.bindViewHolder(adapter.createViewHolder(parent, RecyctAdapter.TYPE_FOOTER), 0)
+        assert(isBind)
     }
 
     private fun defaultRecyctItem(): RecyctItem = object : RecyctItemBase() {
