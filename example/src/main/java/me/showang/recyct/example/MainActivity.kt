@@ -28,11 +28,11 @@ class MainActivity : AppCompatActivity() {
         recycler.adapter = adapter.apply {
             registerHeader(HeaderItem(), -1, ::onHeaderClick)
             registerFooter(FooterItem(), 100, ::onFooterClick)
-            loadMoreEnabled = true
+            enableLoadMore = true
             defaultLoadMore {
                 launch(UI) {
                     delay(3000)
-                    adapter.loadMoreEnabled = false
+                    adapter.enableLoadMore = false
                     val newData = ('a'..'z').map { it.toString() }
                     dataSource2.addAll(newData)
                     adapter.notifyDataAppended(newData.size)

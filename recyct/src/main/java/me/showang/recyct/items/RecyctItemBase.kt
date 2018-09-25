@@ -1,6 +1,8 @@
 package me.showang.recyct.items
 
-abstract class RecyctItemBase(override var initData: Any? = null) : RecyctItem {
+abstract class RecyctItemBase : RecyctItem {
+
+    override var initData: Any? = null
 
     override var clickDelegate: ((Any, Int) -> Unit)? = null
 

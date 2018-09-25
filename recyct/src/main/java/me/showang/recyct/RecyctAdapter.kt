@@ -24,10 +24,11 @@ open class RecyctAdapter(vararg val dataGroup: List<Any>) : RecyclerView.Adapter
 
     private var headerItem: RecyctItem? = null
     private var footerItem: RecyctItem? = null
-    private var loadMoreItem: RecyctItem = DefaultLoadMoreItem()
+    private var loadMoreItem: RecyctItem? = null
 
-    var loadMoreEnabled: Boolean by didSet(false, ::updateLoadMoreState)
+    var enableLoadMore: Boolean by didSet(false, ::updateLoadMoreState)
     var isLoadMoreFail: Boolean by didSet(false, ::updateLoadMoreState)
+    private val isLoadMoreEnabled get() = enableLoadMore && loadMoreItem != null
 
     fun register(recyctItem: RecyctItem, type: Int = TYPE_DEFAULT, clickDelegate: ((data: Any, dataIndex: Int) -> Unit)? = null) {
         checkTypeReserved(type)
@@ -68,8 +69,10 @@ open class RecyctAdapter(vararg val dataGroup: List<Any>) : RecyclerView.Adapter
         footerItem = null
     }
 
-    fun defaultLoadMore(callback: (() -> Unit)) {
-        loadMoreItem = DefaultLoadMoreItem(callback)
+    fun defaultLoadMore(loadMoreCallback: (() -> Unit)? = null) {
+        loadMoreItem = DefaultLoadMoreItem(loadMoreCallback) {
+            isLoadMoreFail = false
+        }
     }
 
     protected open fun customViewHolderTypes(dataIndex: Int): Int {
@@ -94,7 +97,9 @@ open class RecyctAdapter(vararg val dataGroup: List<Any>) : RecyclerView.Adapter
         }
         val dataSize = dataLength
         return when (position) {
-            0 -> headerItem?.run { TYPE_HEADER } ?: customType(position)
+            0 -> headerItem?.run { TYPE_HEADER }
+                    ?: if (dataSize == 0) lastItemType(position, customType)
+                    else customType(position)
             dataSize -> headerItem?.run { customType(position) }
                     ?: lastItemType(position, customType)
             dataSize + 1 -> lastItemType(position, customType)
@@ -103,29 +108,28 @@ open class RecyctAdapter(vararg val dataGroup: List<Any>) : RecyclerView.Adapter
     }
 
     private fun lastItemType(position: Int, otherwise: (Int) -> Int): Int {
-        return if (loadMoreEnabled) TYPE_LOAD_MORE
+        return if (isLoadMoreEnabled) TYPE_LOAD_MORE
         else footerItem?.run { TYPE_FOOTER } ?: otherwise(position)
     }
 
     final override fun onCreateViewHolder(parent: ViewGroup, type: Int): RecyclerView.ViewHolder {
-        val inflater = LayoutInflater.from(parent.context)
-        val recyctItem: RecyctItem? = when (type) {
+        return when (type) {
             TYPE_HEADER -> headerItem
             TYPE_FOOTER -> footerItem
             TYPE_LOAD_MORE -> loadMoreItem
             else -> viewHolderTypeMap[type]
-        }
-        return recyctItem?.let {
-            it.create(inflater, parent).apply {
-                clickDelegate = recyctItem.clickDelegate
-                parentItem = recyctItem
+        }?.let {
+            @Suppress("UNNECESSARY_SAFE_CALL")
+            it.create(LayoutInflater.from(parent.context), parent)?.apply {
+                clickDelegate = it.clickDelegate
+                parentItem = it
             }
         } ?: throw Error("No RecyctItem registered.")
     }
 
     final override fun getItemCount(): Int {
         return dataLength + (headerItem?.let { 1 } ?: 0) + when {
-            loadMoreEnabled -> 1
+            isLoadMoreEnabled -> 1
             footerItem != null -> 1
             else -> 0
         }
@@ -133,16 +137,19 @@ open class RecyctAdapter(vararg val dataGroup: List<Any>) : RecyclerView.Adapter
 
     final override fun onBindViewHolder(holder: RecyclerView.ViewHolder, itemIndex: Int) {
         val vh = holder as? RecyctViewHolder ?: throw Error("ViewHolder is not a RecycHolder")
-        val dataIndexPair = when (getItemViewType(itemIndex)) {
+        itemDataPair(itemIndex) { i: Int -> getItemViewType(i) }?.let { (data, index) ->
+            vh.currentItemIndex = itemIndex
+            vh.currentData = data
+            vh.bind(data, index)
+        }
+    }
+
+    private fun itemDataPair(itemIndex: Int, typeDelegate: (Int) -> Int): Pair<Any, Int>? {
+        return when (typeDelegate(itemIndex)) {
             TYPE_HEADER -> headerItem?.initData?.let { Pair(it, itemIndex) }
             TYPE_FOOTER -> footerItem?.initData?.let { Pair(it, itemIndex) }
             TYPE_LOAD_MORE -> Pair(isLoadMoreFail, itemIndex)
             else -> dataIndex(itemIndex).let { Pair(unionData[it], it) }
-        }
-        dataIndexPair?.let { (data, index) ->
-            vh.currentItemIndex = itemIndex
-            vh.currentData = data
-            vh.bind(data, index)
         }
     }
 

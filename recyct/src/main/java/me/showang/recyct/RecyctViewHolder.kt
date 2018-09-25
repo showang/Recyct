@@ -1,9 +1,13 @@
 package me.showang.recyct
 
+import android.content.Context
+import android.support.annotation.IdRes
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import me.showang.recyct.items.RecyctItem
+import kotlin.properties.ObservableProperty
 
 abstract class RecyctViewHolder(inflater: LayoutInflater, parent: ViewGroup, resId: Int)
     : RecyclerView.ViewHolder(inflater.inflate(resId, parent, false)) {
@@ -13,11 +17,17 @@ abstract class RecyctViewHolder(inflater: LayoutInflater, parent: ViewGroup, res
     var currentItemIndex: Int = -1
     var clickDelegate by didSetNullable<(Any, Int) -> Unit> { value ->
         value?.let { delegate ->
-            itemView.setOnClickListener { currentData?.let { data -> delegate(data, currentItemIndex) } }
+            itemView.setOnClickListener {
+                currentData?.let {
+                    data -> delegate(data, currentItemIndex)
+                }
+            }
         }
     }
 
-    abstract fun bind(data: Any, atIndex: Int)
+    protected val context: Context get() = itemView.context
+    protected fun <T : View> id(@IdRes resId: Int) = object : ObservableProperty<T>(itemView.findViewById<T>(resId)) {}
 
+    abstract fun bind(data: Any, atIndex: Int)
 }
 
