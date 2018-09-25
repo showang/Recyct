@@ -12,20 +12,22 @@ import kotlin.properties.ObservableProperty
 abstract class RecyctViewHolder(inflater: LayoutInflater, parent: ViewGroup, resId: Int)
     : RecyclerView.ViewHolder(inflater.inflate(resId, parent, false)) {
 
-    val context: Context get() = itemView.context
-
     var parentItem: RecyctItem? = null
     var currentData: Any? = null
     var currentItemIndex: Int = -1
     var clickDelegate by didSetNullable<(Any, Int) -> Unit> { value ->
         value?.let { delegate ->
-            itemView.setOnClickListener { currentData?.let { data -> delegate(data, currentItemIndex) } }
+            itemView.setOnClickListener {
+                currentData?.let {
+                    data -> delegate(data, currentItemIndex)
+                }
+            }
         }
     }
 
-    abstract fun bind(data: Any, atIndex: Int)
-
+    protected val context: Context get() = itemView.context
     protected fun <T : View> id(@IdRes resId: Int) = object : ObservableProperty<T>(itemView.findViewById<T>(resId)) {}
 
+    abstract fun bind(data: Any, atIndex: Int)
 }
 

@@ -7,7 +7,7 @@ import me.showang.recyct.R
 import me.showang.recyct.RecyctViewHolder
 
 class DefaultLoadMoreItem(private val onLoadMoreCallback: (() -> Unit)? = null,
-                          private val retryDelegate: (() -> Unit)? = null) : RecyctItemBase() {
+                          private val retryDelegate: (() -> Unit)) : RecyctItemBase() {
 
     override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
         return object : RecyctViewHolder(inflater, parent, R.layout.item_load_more) {
@@ -17,7 +17,7 @@ class DefaultLoadMoreItem(private val onLoadMoreCallback: (() -> Unit)? = null,
 
             init {
                 retryButton.setOnClickListener {
-                    retryDelegate?.invoke()
+                    retryDelegate.invoke()
                 }
             }
 
