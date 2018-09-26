@@ -32,10 +32,11 @@ class MyRecyctItem : RecyctItemBase() {
 
     override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
         return object : RecyctViewHolder(inflater, parent, R.layout.item_example) {
-            private val textView: TextView = itemView.findViewById(R.id.exampleText)
+	
+            private val textView: TextView by id(R.id.exampleText)
             
             override fun bind(data: Any, atIndex: Int) {
-                textView.text = itemView.context.getString(R.string.label_example, data.toString())
+                textView.text = context.getString(R.string.label_example, data.toString())
             }
         }
     }
