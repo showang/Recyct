@@ -1,7 +1,7 @@
 package me.showang.recyct
 
 import android.content.Context
-import android.support.v7.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -431,7 +431,7 @@ class RecyctAdapterTest {
     @Test
     fun testBindViewHolder_invalid() {
         val initData = data
-        val vh = object : RecyclerView.ViewHolder(itemView) {}
+        val vh = object : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {}
 
         try {
             initData.forEach { adapter.bindViewHolder(vh, it) }
@@ -631,7 +631,7 @@ class RecyctAdapterTest {
     private fun mockAdapter(adapter: RecyctAdapter) {
         val observableField = adapter.javaClass.superclass?.getDeclaredField("mObservable")
         observableField?.isAccessible = true
-        observableClazz = RecyclerView::class.java.declaredClasses
+        observableClazz = androidx.recyclerview.widget.RecyclerView::class.java.declaredClasses
                 .reduce { acc, clazz ->
                     when {
                         clazz.toString().contains("AdapterDataObservable") -> clazz

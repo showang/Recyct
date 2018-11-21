@@ -2,15 +2,16 @@ package me.showang.recyct.example
 
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.support.v4.content.ContextCompat
-import android.support.v7.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.appcompat.app.AppCompatActivity
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.TextView
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import me.showang.recyct.RecyctAdapter
 import me.showang.recyct.RecyctViewHolder
 import me.showang.recyct.items.RecyctItemBase
@@ -22,6 +23,8 @@ class MainActivity : AppCompatActivity() {
 
     private val adapter: ExampleAdapter by inject()
 
+    private val uiScope = CoroutineScope(Dispatchers.Main)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -30,12 +33,13 @@ class MainActivity : AppCompatActivity() {
             registerFooter(FooterItem(), 100, ::onFooterClick)
             enableLoadMore = true
             defaultLoadMore {
-                launch(UI) {
+                uiScope.launch {
                     delay(3000)
                     adapter.enableLoadMore = false
                     val newData = ('a'..'z').map { it.toString() }
                     dataSource2.addAll(newData)
                     adapter.notifyDataAppended(newData.size)
+                    adapter.notifyDataSetChanged()
                 }
             }
         }
@@ -64,17 +68,23 @@ class ExampleAdapter(private val dataSource1: List<Int>,
     init {
         register(MyRecyctItemA(), TYPE_A, toastDelegate("Type A"))
         register(MyRecyctItemB(), TYPE_B, toastDelegate("Type B"))
+        sectionsByGroup(SectionTitleItem(), listOf("Section 1", "Section 2"))
     }
 
     override fun customViewHolderTypes(dataIndex: Int): Int {
+//        return when {
+//            dataIndex < dataSource1.size + 10
+//                    || dataIndex > dataSource1.size + 25 -> TYPE_A
+//            else -> TYPE_B
+//        }
         return when {
-            dataIndex < dataSource1.size + 10
-                    || dataIndex > dataSource1.size + 25 -> TYPE_A
-            else -> TYPE_B
+            dataIndex < dataSource1.size -> TYPE_A.also { println("TYPE_A on $dataIndex") }
+            else -> TYPE_B.also { println("TYPE_B on $dataIndex") }
         }
     }
 
 }
+
 
 class HeaderItem : RecyctItemBase() {
     override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
@@ -93,6 +103,17 @@ class FooterItem : RecyctItemBase() {
             private val textView: TextView = itemView.findViewById(R.id.footerText)
             override fun bind(data: Any, atIndex: Int) {
                 textView.text = itemView.context.getString(R.string.label_footer, data.toString())
+            }
+        }
+    }
+}
+
+class SectionTitleItem : RecyctItemBase() {
+    override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder = object : RecyctViewHolder(inflater, parent, R.layout.item_section_title) {
+        val textView: TextView = itemView.findViewById(R.id.sectionTitle_titleText)
+        override fun bind(data: Any, atIndex: Int) {
+            (data as? String)?.let {
+                textView.text = it
             }
         }
     }
