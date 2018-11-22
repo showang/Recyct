@@ -1,12 +1,12 @@
 package me.showang.recyct.example
 
-import android.graphics.drawable.ColorDrawable
+import android.graphics.Color
 import android.os.Bundle
-import androidx.core.content.ContextCompat
-import androidx.appcompat.app.AppCompatActivity
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -15,76 +15,72 @@ import kotlinx.coroutines.launch
 import me.showang.recyct.RecyctAdapter
 import me.showang.recyct.RecyctViewHolder
 import me.showang.recyct.items.RecyctItemBase
+import org.jetbrains.anko.textColor
 import org.koin.android.ext.android.inject
 
 class MainActivity : AppCompatActivity() {
 
-    private val dataSource2: MutableList<String> by inject("source2")
-
-    private val adapter: ExampleAdapter by inject()
+    private val data1: List<Int> by inject("source1")
+    private val data2: List<String> by inject("source2")
+    private val data3: List<String> by inject("source3")
 
     private val uiScope = CoroutineScope(Dispatchers.Main)
+    private val adapter get() = recycler?.adapter as? RecyctAdapter
+    private var viewTypeDelegate: (Int) -> Int = { index ->
+        when {
+            index < data1.size -> 0
+            else -> 1
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        recycler.adapter = adapter.apply {
-            registerHeader(HeaderItem(), -1, ::onHeaderClick)
+        recycler.adapter = object : RecyctAdapter(data1, data2) {
+            override fun customViewHolderTypes(dataIndex: Int): Int = viewTypeDelegate(dataIndex)
+        }.apply {
+            registerHeader(HeaderItem(), -1, onHeaderClick)
             registerFooter(FooterItem(), 100, ::onFooterClick)
+            register(MyRecyctItem("A", Color.RED), 0, toast("Type A"))
+            register(MyRecyctItem("B", Color.LTGRAY), 1, toast("Type B"))
+            sectionsByGroup(SectionTitleItem(), listOf("Section 1", "Section 2"))
             enableLoadMore = true
-            defaultLoadMore {
-                uiScope.launch {
-                    delay(3000)
-                    adapter.enableLoadMore = false
-                    val newData = ('a'..'z').map { it.toString() }
-                    dataSource2.addAll(newData)
-                    adapter.notifyDataAppended(newData.size)
-                    adapter.notifyDataSetChanged()
+            defaultLoadMore(::onLoadMore)
+        }
+    }
+
+    private fun onLoadMore() {
+        uiScope.launch {
+            adapter?.run {
+                delay(3000)
+                enableLoadMore = false
+                register(MyRecyctItem("C", Color.MAGENTA), 2, toast("Type C"))
+                viewTypeDelegate = { index ->
+                    when {
+                        index < data1.size -> 0
+                        index < data1.size + data2.size -> 1
+                        else -> 2
+                    }
                 }
+                appendDataGroup(data3, "Section 3")
+                notifyDataAppended(data3.size)
             }
         }
     }
 
-    private fun onHeaderClick(data: Any, index: Int) {
-        (data as? Int)?.let { adapter.updateHeader(data + 1) }
+    private fun toast(type: String): (Any, Int) -> Unit = { data, index ->
+        Toast.makeText(this, "$type contain data $data at item index: $index.", Toast.LENGTH_LONG).show()
+    }
+
+    private val onHeaderClick: (Any, Int) -> Unit = { data, _ ->
+        (data as? Int)?.let { adapter?.updateHeader(data + 1) }
     }
 
     private fun onFooterClick(data: Any, index: Int) {
-        (data as? Int)?.let { adapter.updateFooter(data - 1) }
+        (data as? Int)?.let { adapter?.updateFooter(data - 1) }
     }
 
 }
-
-class ExampleAdapter(private val dataSource1: List<Int>,
-                     private val dataSource2: List<String>,
-                     toastDelegate: (String) -> ((Any, Int) -> Unit))
-    : RecyctAdapter(dataSource1, dataSource2) {
-
-    companion object {
-        private const val TYPE_A = 0
-        private const val TYPE_B = 1
-    }
-
-    init {
-        register(MyRecyctItemA(), TYPE_A, toastDelegate("Type A"))
-        register(MyRecyctItemB(), TYPE_B, toastDelegate("Type B"))
-        sectionsByGroup(SectionTitleItem(), listOf("Section 1", "Section 2"))
-    }
-
-    override fun customViewHolderTypes(dataIndex: Int): Int {
-//        return when {
-//            dataIndex < dataSource1.size + 10
-//                    || dataIndex > dataSource1.size + 25 -> TYPE_A
-//            else -> TYPE_B
-//        }
-        return when {
-            dataIndex < dataSource1.size -> TYPE_A.also { println("TYPE_A on $dataIndex") }
-            else -> TYPE_B.also { println("TYPE_B on $dataIndex") }
-        }
-    }
-
-}
-
 
 class HeaderItem : RecyctItemBase() {
     override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
@@ -119,12 +115,13 @@ class SectionTitleItem : RecyctItemBase() {
     }
 }
 
-class MyRecyctItemA : RecyctItemBase() {
+class MyRecyctItem(private val type: String, private val color: Int) : RecyctItemBase() {
 
     override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
         return object : RecyctViewHolder(inflater, parent, R.layout.item_basic) {
 
             private val contentText: TextView = itemView.findViewById(R.id.contentText)
+            private val labelText: TextView = itemView.findViewById(R.id.typeLabelText)
 
             override fun bind(data: Any, atIndex: Int) {
                 val dataString = when (data) {
@@ -132,29 +129,9 @@ class MyRecyctItemA : RecyctItemBase() {
                     is String -> data
                     else -> "Unknown"
                 }
-                contentText.text = itemView.context.getString(R.string.label_item, "TypeA", dataString)
-            }
-
-        }
-    }
-
-}
-
-class MyRecyctItemB : RecyctItemBase() {
-
-    override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
-        return object : RecyctViewHolder(inflater, parent, R.layout.item_basic) {
-
-            init {
-                itemView.background = ColorDrawable(ContextCompat.getColor(itemView.context, android.R.color.darker_gray))
-            }
-
-            private val contentText: TextView = itemView.findViewById(R.id.contentText)
-
-            override fun bind(data: Any, atIndex: Int) {
-                when (data) {
-                    is String -> contentText.text = itemView.context.getString(R.string.label_item, "TypeB", data)
-                }
+                labelText.text = itemView.context.getString(R.string.label_type, type)
+                labelText.textColor = color
+                contentText.text = itemView.context.getString(R.string.label_item, dataString)
             }
 
         }

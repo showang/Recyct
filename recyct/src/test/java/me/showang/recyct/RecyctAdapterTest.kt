@@ -1,10 +1,10 @@
 package me.showang.recyct
 
 import android.content.Context
-import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.RecyclerView
 import me.showang.recyct.items.DefaultLoadMoreItem
 import me.showang.recyct.items.RecyctItem
 import me.showang.recyct.items.RecyctItemBase
@@ -155,7 +155,6 @@ class RecyctAdapterTest {
 
     @Test
     fun testViewTypes() {
-        val data: List<Any> = adapter.dataGroup.fold(mutableListOf()) { total, next -> total.apply { addAll(next) } }
         adapter = RecyctAdapter(data).also(::mockAdapter)
         data.onEach { assert(adapter.getItemViewType(it as Int) == RecyctAdapter.TYPE_DEFAULT) }
 
@@ -560,15 +559,15 @@ class RecyctAdapterTest {
         }
     }
 
-    @Test(expected = UnsupportedOperationException::class)
+    @Test
     fun testOthers_emptyDataCollections() {
         val field = adapter::class.java.getDeclaredField("dataGroup")
         val modifiersField = Field::class.java.getDeclaredField("modifiers")
         modifiersField.isAccessible = true
         modifiersField.setInt(field, field.modifiers and Modifier.FINAL.inv())
         field.isAccessible = true
-        field.set(adapter, arrayOf<List<Any>>())
-        adapter.itemCount
+        field.set(adapter, mutableListOf<List<Any>>())
+        assert(adapter.itemCount == 0)
     }
 
     @Test()

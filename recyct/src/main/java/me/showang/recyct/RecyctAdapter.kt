@@ -8,18 +8,18 @@ import me.showang.recyct.items.RecyctItem
 open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
 
     companion object {
-        const val TYPE_DEFAULT = Int.MAX_VALUE
+        const val TYPE_DEFAULT = 0
         const val TYPE_HEADER = Int.MAX_VALUE - 1
         const val TYPE_FOOTER = Int.MAX_VALUE - 2
         const val TYPE_LOAD_MORE = Int.MAX_VALUE - 3
         const val TYPE_SECTION_TITLE = Int.MAX_VALUE - 4
     }
 
-
-    val dataGroup = mutableListOf<List<Any>>().apply { addAll(data) }
+    private val dataGroup = mutableListOf<List<Any>>().apply { addAll(data) }
     private val unionData: List<Any>
         get() = dataGroup.fold(mutableListOf()) { total, next -> total.apply { addAll(next) } }
     private val dataLength: Int get() = dataGroup.map { it.size }.sum()
+    private val dataSectionCount: Int get() = dataLength + if (hasSectionTitle) dataGroup.size else 0
 
     private val dataIndex = { itemIndex: Int ->
         itemIndex - (headerItem?.run { 1 }
@@ -32,8 +32,7 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
     private var loadMoreItem: RecyctItem? = null
 
     private var sectionTitleItem: RecyctItem? = null
-    private var sectionData: List<Any> = arrayListOf()
-    //    private var sectionTitleSparseArray = androidx.collection.SparseArrayCompat<Int>()
+    private var sectionTitleData: MutableList<Any> = mutableListOf()
     private val hasSectionTitle: Boolean get() = sectionTitleItem != null
     private val sectionIndex = { itemIndex: Int ->
         val index = itemIndex - (headerItem?.run { 1 } ?: 0)
@@ -52,6 +51,15 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
     var enableLoadMore: Boolean by didSet(false, ::updateLoadMoreState)
     var isLoadMoreFail: Boolean by didSet(false, ::updateLoadMoreState)
     private val isLoadMoreEnabled get() = enableLoadMore && loadMoreItem != null
+
+    fun appendDataGroup(dataList: List<Any>, sectionTitleData: Any? = null) {
+        dataGroup.add(dataList)
+        if (hasSectionTitle) {
+            sectionTitleData
+                    ?: throw IllegalArgumentException("You have to insert section title data when insert a new group.")
+            this.sectionTitleData.add(sectionTitleData)
+        }
+    }
 
     fun register(recyctItem: RecyctItem, type: Int = TYPE_DEFAULT, clickDelegate: ((data: Any, dataIndex: Int) -> Unit)? = null) {
         checkTypeReserved(type)
@@ -80,7 +88,7 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
     fun updateFooter(data: Any) {
         footerItem?.apply {
             initData = data
-            notifyItemChanged(dataLength + (headerItem?.run { 1 } ?: 0))
+            notifyItemChanged(dataSectionCount + (headerItem?.run { 1 } ?: 0))
         }
     }
 
@@ -101,14 +109,7 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
     fun sectionsByGroup(sectionItem: RecyctItem, sectionData: List<Any>) {
         this.sectionTitleItem = sectionItem
         if (sectionData.size < dataGroup.size) throw IllegalArgumentException("section data is not enough.")
-        this.sectionData = sectionData
-
-//        dataGroup.map { it.size + 1 }.reduceIndexed { index, acc, i ->
-//            sectionTitleSparseArray.put(acc, index)
-//            acc + i
-//        }
-//
-//        Log.e(javaClass.simpleName, "sectionTitleSA: $sectionTitleSparseArray")
+        this.sectionTitleData = sectionData.toMutableList()
     }
 
     protected open fun customViewHolderTypes(dataIndex: Int): Int {
@@ -182,8 +183,7 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
     }
 
     final override fun getItemCount(): Int {
-        val sectionWithDataCount = dataLength + if (hasSectionTitle) dataGroup.size else 0
-        return sectionWithDataCount + (headerItem?.let { 1 } ?: 0) + when {
+        return dataSectionCount + (headerItem?.let { 1 } ?: 0) + when {
             isLoadMoreEnabled || footerItem != null -> 1
             else -> 0
         }
@@ -191,9 +191,7 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
 
     final override fun onBindViewHolder(holder: androidx.recyclerview.widget.RecyclerView.ViewHolder, itemIndex: Int) {
         val vh = holder as? RecyctViewHolder ?: throw Error("ViewHolder is not a RecycHolder")
-        itemDataPair(itemIndex) { i: Int ->
-            getItemViewType(i).also { println("Type: $it at itemIndex: $i") }
-        }?.let { (data, index) ->
+        itemDataPair(itemIndex, ::getItemViewType)?.let { (data, index) ->
             vh.currentItemIndex = itemIndex
             vh.currentData = data
             vh.bind(data, index)
@@ -205,7 +203,11 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
             TYPE_HEADER -> headerItem?.initData?.let { Pair(it, itemIndex) }
             TYPE_FOOTER -> footerItem?.initData?.let { Pair(it, itemIndex) }
             TYPE_LOAD_MORE -> Pair(isLoadMoreFail, itemIndex)
-            TYPE_SECTION_TITLE -> sectionIndex(itemIndex).let { Pair(sectionData[it], it) }
+            TYPE_SECTION_TITLE -> sectionIndex(itemIndex).let { sectionIndex ->
+                if (sectionIndex < sectionTitleData.size)
+                    Pair(sectionTitleData[sectionIndex], sectionIndex)
+                else null
+            }
             else -> dataIndex(itemIndex).let { Pair(unionData[it], it) }
         }
     }
@@ -215,4 +217,3 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
     }
 
 }
-
