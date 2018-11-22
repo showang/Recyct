@@ -156,31 +156,31 @@ class RecyctAdapterTest {
     @Test
     fun testViewTypes() {
         adapter = RecyctAdapter(data).also(::mockAdapter)
-        data.onEach { assert(adapter.getItemViewType(it as Int) == RecyctAdapter.TYPE_DEFAULT) }
+        data.onEach { assert(adapter.getItemViewType(it) == RecyctAdapter.TYPE_DEFAULT) }
 
         adapter.registerHeader(header)
         assert(adapter.getItemViewType(0) == RecyctAdapter.TYPE_HEADER)
-        data.onEach { assert(adapter.getItemViewType(it as Int + 1) == RecyctAdapter.TYPE_DEFAULT) }
+        data.onEach { assert(adapter.getItemViewType(it + 1) == RecyctAdapter.TYPE_DEFAULT) }
 
         adapter.registerFooter(footer)
         assert(adapter.getItemViewType(0) == RecyctAdapter.TYPE_HEADER)
-        data.onEach { assert(adapter.getItemViewType(it as Int + 1) == RecyctAdapter.TYPE_DEFAULT) }
+        data.onEach { assert(adapter.getItemViewType(it + 1) == RecyctAdapter.TYPE_DEFAULT) }
         assert(adapter.getItemViewType(data.size + 1) == RecyctAdapter.TYPE_FOOTER)
 
         adapter.enableLoadMore = true
         adapter.defaultLoadMore { }
         assert(adapter.getItemViewType(0) == RecyctAdapter.TYPE_HEADER)
-        data.onEach { assert(adapter.getItemViewType(it as Int + 1) == RecyctAdapter.TYPE_DEFAULT) }
+        data.onEach { assert(adapter.getItemViewType(it + 1) == RecyctAdapter.TYPE_DEFAULT) }
         assert(adapter.getItemViewType(data.size + 1) == RecyctAdapter.TYPE_LOAD_MORE)
 
         adapter.unregisterFooter()
         assert(adapter.getItemViewType(0) == RecyctAdapter.TYPE_HEADER)
-        data.onEach { assert(adapter.getItemViewType(it as Int + 1) == RecyctAdapter.TYPE_DEFAULT) }
+        data.onEach { assert(adapter.getItemViewType(it + 1) == RecyctAdapter.TYPE_DEFAULT) }
         assert(adapter.getItemViewType(data.size + 1) == RecyctAdapter.TYPE_LOAD_MORE)
 
         adapter.enableLoadMore = false
         assert(adapter.getItemViewType(0) == RecyctAdapter.TYPE_HEADER)
-        data.onEach { assert(adapter.getItemViewType(it as Int + 1) == RecyctAdapter.TYPE_DEFAULT) }
+        data.onEach { assert(adapter.getItemViewType(it + 1) == RecyctAdapter.TYPE_DEFAULT) }
         assert(adapter.getItemViewType(data.size + 1) == RecyctAdapter.TYPE_DEFAULT)
     }
 
@@ -430,7 +430,7 @@ class RecyctAdapterTest {
     @Test
     fun testBindViewHolder_invalid() {
         val initData = data
-        val vh = object : androidx.recyclerview.widget.RecyclerView.ViewHolder(itemView) {}
+        val vh = object : RecyclerView.ViewHolder(itemView) {}
 
         try {
             initData.forEach { adapter.bindViewHolder(vh, it) }
@@ -516,8 +516,8 @@ class RecyctAdapterTest {
     fun testOthers_itemDataPair() {
         adapter::class.java.getDeclaredMethod("itemDataPair", Int::class.java, Function1::class.java).run {
             isAccessible = true
-            invoke(adapter, 0, { _: Int -> RecyctAdapter.TYPE_HEADER })
-            invoke(adapter, 0, { _: Int -> RecyctAdapter.TYPE_FOOTER })
+            invoke(adapter, 0, { RecyctAdapter.TYPE_HEADER })
+            invoke(adapter, 0, { RecyctAdapter.TYPE_FOOTER })
         }
     }
 
@@ -630,7 +630,7 @@ class RecyctAdapterTest {
     private fun mockAdapter(adapter: RecyctAdapter) {
         val observableField = adapter.javaClass.superclass?.getDeclaredField("mObservable")
         observableField?.isAccessible = true
-        observableClazz = androidx.recyclerview.widget.RecyclerView::class.java.declaredClasses
+        observableClazz = RecyclerView::class.java.declaredClasses
                 .reduce { acc, clazz ->
                     when {
                         clazz.toString().contains("AdapterDataObservable") -> clazz
