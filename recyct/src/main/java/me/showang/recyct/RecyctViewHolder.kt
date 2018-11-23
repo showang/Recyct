@@ -1,16 +1,15 @@
 package me.showang.recyct
 
 import android.content.Context
-import android.support.annotation.IdRes
-import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.annotation.IdRes
 import me.showang.recyct.items.RecyctItem
 import kotlin.properties.ObservableProperty
 
 abstract class RecyctViewHolder(inflater: LayoutInflater, parent: ViewGroup, resId: Int)
-    : RecyclerView.ViewHolder(inflater.inflate(resId, parent, false)) {
+    : androidx.recyclerview.widget.RecyclerView.ViewHolder(inflater.inflate(resId, parent, false)) {
 
     var parentItem: RecyctItem? = null
     var currentData: Any? = null
