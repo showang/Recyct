@@ -2,10 +2,15 @@ package me.showang.recyct
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.showang.recyct.items.DefaultLoadMoreItem
 import me.showang.recyct.items.RecyctItem
 
-open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
+open class RecyctAdapter(vararg data: List<Any>, defaultScope: CoroutineScope? = null) : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
 
     companion object {
         const val TYPE_DEFAULT = 0
@@ -15,6 +20,7 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
         const val TYPE_SECTION_TITLE = Int.MAX_VALUE - 4
     }
 
+    private val uiScope: CoroutineScope by lazy { defaultScope ?: CoroutineScope(Dispatchers.Main) }
     private val dataGroup = mutableListOf<List<Any>>().apply { addAll(data) }
     private val unionData: List<Any>
         get() = dataGroup.fold(mutableListOf()) { total, next -> total.apply { addAll(next) } }
@@ -166,21 +172,20 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
         else footerItem?.run { TYPE_FOOTER } ?: otherwise(position)
     }
 
-    final override fun onCreateViewHolder(parent: ViewGroup, type: Int): androidx.recyclerview.widget.RecyclerView.ViewHolder {
-        return when (type) {
-            TYPE_HEADER -> headerItem
-            TYPE_FOOTER -> footerItem
-            TYPE_LOAD_MORE -> loadMoreItem
-            TYPE_SECTION_TITLE -> sectionTitleItem
-            else -> viewHolderTypeMap[type]
-        }?.let {
-            @Suppress("UNNECESSARY_SAFE_CALL") //For unit test coverage.
-            it.create(LayoutInflater.from(parent.context), parent)?.apply {
-                clickDelegate = it.clickDelegate
-                parentItem = it
-            }
-        } ?: throw Error("No RecyctItem registered.")
-    }
+    final override fun onCreateViewHolder(parent: ViewGroup, type: Int): androidx.recyclerview.widget.RecyclerView.ViewHolder =
+            when (type) {
+                TYPE_HEADER -> headerItem
+                TYPE_FOOTER -> footerItem
+                TYPE_LOAD_MORE -> loadMoreItem
+                TYPE_SECTION_TITLE -> sectionTitleItem
+                else -> viewHolderTypeMap[type]
+            }?.let {
+                @Suppress("UNNECESSARY_SAFE_CALL") //For unit test coverage.
+                it.create(LayoutInflater.from(parent.context), parent)?.apply {
+                    clickDelegate = it.clickDelegate
+                    parentItem = it
+                }
+            } ?: throw Error("No RecyctItem registered.")
 
     final override fun getItemCount(): Int {
         return dataSectionCount + (headerItem?.let { 1 } ?: 0) + when {
@@ -214,6 +219,20 @@ open class RecyctAdapter(vararg data: List<Any>) : androidx.recyclerview.widget.
 
     fun notifyDataAppended(newDataSize: Int) {
         itemCount.also { notifyItemRangeChanged(it, it + newDataSize) }
+    }
+
+    fun notifyGroupDataChanged(groupDataIndex: Int, groupIndex: Int = 0) {
+        uiScope.launch {
+            var itemCount = groupDataIndex
+            withContext(IO) {
+                for (index in 0 until (groupIndex - 1)) {
+                    itemCount += dataGroup[index].size
+                }
+                itemCount += headerItem?.run { 1 } ?: 0
+                itemCount += sectionTitleItem?.run { groupIndex + 1 } ?: 0
+            }
+            notifyItemChanged(itemCount)
+        }
     }
 
 }

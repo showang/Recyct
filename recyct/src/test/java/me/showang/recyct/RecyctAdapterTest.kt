@@ -512,14 +512,14 @@ class RecyctAdapterTest {
         invokePropertyDelegateFunctions(adapter, adapter::class.java.getDeclaredField("enableLoadMore\$delegate"))
     }
 
-    @Test
-    fun testOthers_itemDataPair() {
-        adapter::class.java.getDeclaredMethod("itemDataPair", Int::class.java, Function1::class.java).run {
-            isAccessible = true
-            invoke(adapter, 0, { RecyctAdapter.TYPE_HEADER })
-            invoke(adapter, 0, { RecyctAdapter.TYPE_FOOTER })
-        }
-    }
+//    @Test
+//    fun testOthers_itemDataPair() {
+//        adapter::class.java.getDeclaredMethod("itemDataPair", Int::class.java, Function1::class.java).run {
+//            isAccessible = true
+//            invoke(adapter, 0, { RecyctAdapter.TYPE_HEADER })
+//            invoke(adapter, 0, { RecyctAdapter.TYPE_FOOTER })
+//        }
+//    }
 
     @Test
     fun testOthers_viewHolder() {

@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity() {
             override fun customViewHolderTypes(dataIndex: Int): Int = viewTypeDelegate(dataIndex)
         }.apply {
             registerHeader(HeaderItem(), -1, onHeaderClick)
-            registerFooter(FooterItem(), 100, ::onFooterClick)
+            registerFooter(FooterItem(), 100, onFooterClick)
             register(MyRecyctItem("A", Color.RED), 0, toast("Type A"))
             register(MyRecyctItem("B", Color.LTGRAY), 1, toast("Type B"))
             sectionsByGroup(SectionTitleItem(), listOf("Section 1", "Section 2"))
@@ -76,7 +76,7 @@ class MainActivity : AppCompatActivity() {
         (data as? Int)?.let { adapter?.updateHeader(data + 1) }
     }
 
-    private fun onFooterClick(data: Any, index: Int) {
+    private val onFooterClick: (Any, Int) -> Unit = { data, _ ->
         (data as? Int)?.let { adapter?.updateFooter(data - 1) }
     }
 
@@ -110,6 +110,9 @@ class SectionTitleItem : RecyctItemBase() {
         override fun bind(data: Any, atIndex: Int) {
             (data as? String)?.let {
                 textView.text = it
+            }
+            itemView.setOnClickListener {
+                Toast.makeText(it.context, "Section title at group index: $atIndex", Toast.LENGTH_LONG).show()
             }
         }
     }
