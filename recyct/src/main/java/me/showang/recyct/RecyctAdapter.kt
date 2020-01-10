@@ -225,7 +225,7 @@ open class RecyctAdapter(vararg data: List<Any>, defaultScope: CoroutineScope? =
         uiScope.launch {
             var itemCount = groupDataIndex
             withContext(IO) {
-                for (index in 0 until (groupIndex - 1)) {
+                for (index in 0 .. (groupIndex - 1)) {
                     itemCount += dataGroup[index].size
                 }
                 itemCount += headerItem?.run { 1 } ?: 0
