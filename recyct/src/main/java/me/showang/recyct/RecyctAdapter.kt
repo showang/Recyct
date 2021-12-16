@@ -1,35 +1,29 @@
 package me.showang.recyct
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.showang.recyct.items.DefaultLoadMoreItem
 import me.showang.recyct.items.RecyctItem
 
-open class RecyctAdapter(vararg data: List<Any>, defaultScope: CoroutineScope? = null) : androidx.recyclerview.widget.RecyclerView.Adapter<androidx.recyclerview.widget.RecyclerView.ViewHolder>() {
+open class RecyctAdapter(
+    vararg data: List<Any>,
+    diffItemCallback: DiffUtil.ItemCallback<Any> = defaultDiffer
+) : ListAdapter<Any, RecyclerView.ViewHolder>(diffItemCallback) {
 
-    companion object {
-        const val TYPE_DEFAULT = 0
-        const val TYPE_HEADER = Int.MAX_VALUE - 1
-        const val TYPE_FOOTER = Int.MAX_VALUE - 2
-        const val TYPE_LOAD_MORE = Int.MAX_VALUE - 3
-        const val TYPE_SECTION_TITLE = Int.MAX_VALUE - 4
-    }
-
-    private val uiScope: CoroutineScope by lazy { defaultScope ?: CoroutineScope(Dispatchers.Main) }
     private val dataGroup = mutableListOf<List<Any>>().apply { addAll(data) }
-    private val unionData: List<Any>
-        get() = dataGroup.fold(mutableListOf()) { total, next -> total.apply { addAll(next) } }
+    private val unionData: List<Any> get() = dataGroup.flatten()
     private val dataLength: Int get() = dataGroup.map { it.size }.sum()
     private val dataSectionCount: Int get() = dataLength + if (hasSectionTitle) dataGroup.size else 0
 
     private val dataIndex = { itemIndex: Int ->
         itemIndex - (headerItem?.run { 1 }
-                ?: 0) - if (hasSectionTitle) sectionIndex(itemIndex) + 1 else 0
+            ?: 0) - if (hasSectionTitle) sectionIndex(itemIndex) + 1 else 0
     }
     private val viewHolderTypeMap = mutableMapOf<Int, RecyctItem>()
 
@@ -62,25 +56,37 @@ open class RecyctAdapter(vararg data: List<Any>, defaultScope: CoroutineScope? =
         dataGroup.add(dataList)
         if (hasSectionTitle) {
             sectionTitleData
-                    ?: throw IllegalArgumentException("You have to insert section title data when insert a new group.")
+                ?: throw IllegalArgumentException("You have to insert section title data when insert a new group.")
             this.sectionTitleData.add(sectionTitleData)
         }
     }
 
-    fun register(recyctItem: RecyctItem, type: Int = TYPE_DEFAULT, clickDelegate: ((data: Any, dataIndex: Int) -> Unit)? = null) {
+    fun register(
+        recyctItem: RecyctItem,
+        type: Int = TYPE_DEFAULT,
+        clickDelegate: ((data: Any, dataIndex: Int, itemIndex: Int) -> Unit)? = null
+    ) {
         checkTypeReserved(type)
-        viewHolderTypeMap[type] = recyctItem.apply { this.clickDelegate = clickDelegate }
+        viewHolderTypeMap[type] = recyctItem.apply { this.itemClickDelegate = clickDelegate }
     }
 
-    fun registerHeader(headerItem: RecyctItem, withData: Any? = null, clickListener: ((data: Any, itemIndex: Int) -> Unit)? = null) {
+    fun registerHeader(
+        headerItem: RecyctItem,
+        withData: Any? = null,
+        clickListener: ((data: Any, dataIndex: Int, itemIndex: Int) -> Unit)? = null
+    ) {
         headerItem.initData = withData
-        this.headerItem = headerItem.apply { clickDelegate = clickListener }
+        this.headerItem = headerItem.apply { itemClickDelegate = clickListener }
     }
 
-    fun registerFooter(footerItem: RecyctItem, data: Any? = null, clickListener: ((data: Any, itemIndex: Int) -> Unit)? = null) {
+    fun registerFooter(
+        footerItem: RecyctItem,
+        data: Any? = null,
+        clickListener: ((data: Any, dataIndex: Int, itemIndex: Int) -> Unit)? = null
+    ) {
         footerItem.initData = data
         this.footerItem = footerItem.apply {
-            clickDelegate = clickListener
+            itemClickDelegate = clickListener
         }
     }
 
@@ -157,11 +163,15 @@ open class RecyctAdapter(vararg data: List<Any>, defaultScope: CoroutineScope? =
     final override fun getItemViewType(position: Int): Int {
         val dataSize = dataLength + if (hasSectionTitle) dataGroup.size else 0
         return when (position) {
-            0 -> headerItem?.run { TYPE_HEADER }
+            0 -> {
+                headerItem?.run { TYPE_HEADER }
                     ?: if (dataSize == 0) lastItemType(position, ::itemTypeByUserDef)
                     else itemTypeByUserDef(position)
-            dataSize -> headerItem?.run { itemTypeByUserDef(position) }
+            }
+            dataSize -> {
+                headerItem?.run { itemTypeByUserDef(position) }
                     ?: lastItemType(position, ::itemTypeByUserDef)
+            }
             dataSize + 1 -> lastItemType(position, ::itemTypeByUserDef)
             else -> itemTypeByUserDef(position)
         }
@@ -172,20 +182,22 @@ open class RecyctAdapter(vararg data: List<Any>, defaultScope: CoroutineScope? =
         else footerItem?.run { TYPE_FOOTER } ?: otherwise(position)
     }
 
-    final override fun onCreateViewHolder(parent: ViewGroup, type: Int): androidx.recyclerview.widget.RecyclerView.ViewHolder =
-            when (type) {
-                TYPE_HEADER -> headerItem
-                TYPE_FOOTER -> footerItem
-                TYPE_LOAD_MORE -> loadMoreItem
-                TYPE_SECTION_TITLE -> sectionTitleItem
-                else -> viewHolderTypeMap[type]
-            }?.let {
-                @Suppress("UNNECESSARY_SAFE_CALL") //For unit test coverage.
-                it.create(LayoutInflater.from(parent.context), parent)?.apply {
-                    clickDelegate = it.clickDelegate
-                    parentItem = it
-                }
-            } ?: throw Error("No RecyctItem registered.")
+    final override fun onCreateViewHolder(
+        parent: ViewGroup,
+        type: Int
+    ): RecyclerView.ViewHolder =
+        when (type) {
+            TYPE_HEADER -> headerItem
+            TYPE_FOOTER -> footerItem
+            TYPE_LOAD_MORE -> loadMoreItem
+            TYPE_SECTION_TITLE -> sectionTitleItem
+            else -> viewHolderTypeMap[type]
+        }?.run {
+            @Suppress("UNNECESSARY_SAFE_CALL") //For unit test coverage.
+            create(LayoutInflater.from(parent.context), parent)?.apply {
+                defaultClickDelegate = itemClickDelegate
+            }
+        } ?: throw Error("No RecyctItem registered.")
 
     final override fun getItemCount(): Int {
         return dataSectionCount + (headerItem?.let { 1 } ?: 0) + when {
@@ -194,20 +206,25 @@ open class RecyctAdapter(vararg data: List<Any>, defaultScope: CoroutineScope? =
         }
     }
 
-    final override fun onBindViewHolder(holder: androidx.recyclerview.widget.RecyclerView.ViewHolder, itemIndex: Int) {
-        val vh = holder as? RecyctViewHolder ?: throw Error("ViewHolder is not a RecycHolder")
-        itemDataPair(itemIndex, ::getItemViewType)?.let { (data, index) ->
-            vh.currentItemIndex = itemIndex
+    final override fun onBindViewHolder(
+        holder: RecyclerView.ViewHolder,
+        position: Int
+    ) {
+        val vh = holder as? RecyctViewHolder
+            ?: throw Error("ViewHolder is not a RecycHolder")
+        itemDataPair(position, ::getItemViewType)?.let { (data, index) ->
             vh.currentData = data
-            vh.bind(data, index)
+            vh.currentDataIndex = index
+            vh.currentItemIndex = position
+            vh.bind(data, index, position)
         }
     }
 
     private fun itemDataPair(itemIndex: Int, typeDelegate: (Int) -> Int): Pair<Any, Int>? {
         return when (typeDelegate(itemIndex)) {
-            TYPE_HEADER -> headerItem?.initData?.let { Pair(it, itemIndex) }
-            TYPE_FOOTER -> footerItem?.initData?.let { Pair(it, itemIndex) }
-            TYPE_LOAD_MORE -> Pair(isLoadMoreFail, itemIndex)
+            TYPE_HEADER -> headerItem?.initData?.let { Pair(it, 0) }
+            TYPE_FOOTER -> footerItem?.initData?.let { Pair(it, 0) }
+            TYPE_LOAD_MORE -> Pair(isLoadMoreFail, 0)
             TYPE_SECTION_TITLE -> sectionIndex(itemIndex).let { sectionIndex ->
                 if (sectionIndex < sectionTitleData.size)
                     Pair(sectionTitleData[sectionIndex], sectionIndex)
@@ -218,21 +235,43 @@ open class RecyctAdapter(vararg data: List<Any>, defaultScope: CoroutineScope? =
     }
 
     fun notifyDataAppended(newDataSize: Int) {
-        itemCount.also { notifyItemRangeChanged(it, it + newDataSize) }
-    }
-
-    fun notifyGroupDataChanged(groupDataIndex: Int, groupIndex: Int = 0) {
-        uiScope.launch {
-            var itemCount = groupDataIndex
-            withContext(IO) {
-                for (index in 0 .. (groupIndex - 1)) {
-                    itemCount += dataGroup[index].size
-                }
-                itemCount += headerItem?.run { 1 } ?: 0
-                itemCount += sectionTitleItem?.run { groupIndex + 1 } ?: 0
-            }
-            notifyItemChanged(itemCount)
+        itemCount.also {
+            val loadMoreOffset = if (isLoadMoreEnabled) 1 else 0
+            notifyItemRangeChanged(it - loadMoreOffset, newDataSize + loadMoreOffset)
         }
     }
 
+    suspend fun notifyGroupDataChanged(
+        groupDataIndex: Int,
+        groupIndex: Int = 0
+    ) {
+        var itemCount = groupDataIndex
+        withContext(IO) {
+            for (index in 0 until groupIndex) {
+                itemCount += dataGroup[index].size
+            }
+            itemCount += headerItem?.run { 1 } ?: 0
+            itemCount += sectionTitleItem?.run { groupIndex + 1 } ?: 0
+        }
+        notifyItemChanged(itemCount)
+    }
+
+    companion object {
+        const val TYPE_DEFAULT = 0
+        const val TYPE_HEADER = Int.MAX_VALUE - 1
+        const val TYPE_FOOTER = Int.MAX_VALUE - 2
+        const val TYPE_LOAD_MORE = Int.MAX_VALUE - 3
+        const val TYPE_SECTION_TITLE = Int.MAX_VALUE - 4
+
+        private val defaultDiffer = object : DiffUtil.ItemCallback<Any>() {
+            override fun areItemsTheSame(oldItem: Any, newItem: Any): Boolean {
+                return oldItem == newItem
+            }
+
+            @SuppressLint("DiffUtilEquals")
+            override fun areContentsTheSame(oldItem: Any, newItem: Any): Boolean {
+                return oldItem == newItem
+            }
+        }
+    }
 }

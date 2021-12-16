@@ -4,28 +4,29 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.showang.recyct.BindingRecyctViewHolder
 import me.showang.recyct.RecyctAdapter
-import me.showang.recyct.RecyctViewHolder
-import me.showang.recyct.items.RecyctItemBase
-import org.jetbrains.anko.textColor
+import me.showang.recyct.example.databinding.*
+import me.showang.recyct.items.RecyctItem
 import org.koin.android.ext.android.inject
+import org.koin.core.qualifier.named
 
 class MainActivity : AppCompatActivity() {
 
-    private val data1: List<Int> by inject("source1")
-    private val data2: List<String> by inject("source2")
-    private val data3: List<String> by inject("source3")
+    private val data1: List<Int> by inject(named("source1"))
+    private val data2: List<String> by inject(named("source2"))
+    private val data3: List<String> by inject(named("source3"))
 
-    private val uiScope = CoroutineScope(Dispatchers.Main)
-    private val adapter get() = recycler?.adapter as? RecyctAdapter
+    private val binding by lazy {
+        ActivityMainBinding.inflate(layoutInflater)
+    }
+    private var adapter: RecyctAdapter? = null
     private var viewTypeDelegate: (Int) -> Int = { index ->
         when {
             index < data1.size -> 0
@@ -35,7 +36,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(binding.apply {
+            initRecyclerView()
+        }.root)
+    }
+
+    private fun ActivityMainBinding.initRecyclerView() {
         recycler.adapter = object : RecyctAdapter(data1, data2) {
             override fun customViewHolderTypes(dataIndex: Int): Int = viewTypeDelegate(dataIndex)
         }.apply {
@@ -46,11 +52,12 @@ class MainActivity : AppCompatActivity() {
             sectionsByGroup(SectionTitleItem(), listOf("Section 1", "Section 2"))
             enableLoadMore = true
             defaultLoadMore(::onLoadMore)
+            adapter = this
         }
     }
 
     private fun onLoadMore() {
-        uiScope.launch {
+        CoroutineScope(Main).launch {
             adapter?.run {
                 delay(3000)
                 enableLoadMore = false
@@ -68,76 +75,87 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun toast(type: String): (Any, Int) -> Unit = { data, index ->
-        Toast.makeText(this, "$type contain data $data at item index: $index.", Toast.LENGTH_LONG).show()
+    private fun toast(typeName: String): (Any, Int, Int) -> Unit = { data, dataIndex, itemIndex ->
+        Toast.makeText(
+            this,
+            "$typeName contain $data at data[$dataIndex] and item[$itemIndex].",
+            Toast.LENGTH_LONG
+        )
+            .show()
     }
 
-    private val onHeaderClick: (Any, Int) -> Unit = { data, _ ->
-        (data as? Int)?.let { adapter?.updateHeader(data + 1) }
+    private val onHeaderClick: (Any, Int, Int) -> Unit = { data, _, _ ->
+        (data as? Int)?.let { adapter?.updateHeader(it + 1) }
     }
 
-    private val onFooterClick: (Any, Int) -> Unit = { data, _ ->
-        (data as? Int)?.let { adapter?.updateFooter(data - 1) }
+    private val onFooterClick: (Any, Int, Int) -> Unit = { data, _, _ ->
+        (data as? Int)?.let { adapter?.updateFooter(it - 1) }
     }
 
 }
 
-class HeaderItem : RecyctItemBase() {
-    override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
-        return object : RecyctViewHolder(inflater, parent, R.layout.item_header) {
-            private val textView: TextView = itemView.findViewById(R.id.headerText)
-            override fun bind(data: Any, atIndex: Int) {
-                textView.text = itemView.context.getString(R.string.label_header, data.toString())
+class HeaderItem : RecyctItem() {
+    override fun create(inflater: LayoutInflater, parent: ViewGroup) =
+        object : BindingRecyctViewHolder<ItemHeaderBinding>(
+            ItemHeaderBinding.inflate(inflater, parent, false), this
+        ) {
+            override fun bind(data: Any, dataIndex: Int, itemIndex: Int) {
+                binding.headerText.text =
+                    itemView.context.getString(R.string.label_header, data.toString())
             }
+        }
+}
+
+class FooterItem : RecyctItem() {
+    override fun create(inflater: LayoutInflater, parent: ViewGroup) = object :
+        BindingRecyctViewHolder<ItemFooterBinding>(
+            ItemFooterBinding.inflate(inflater, parent, false),
+            this@FooterItem
+        ) {
+        override fun bind(data: Any, dataIndex: Int, itemIndex: Int) {
+            binding.footerText.text =
+                itemView.context.getString(R.string.label_footer, data.toString())
         }
     }
 }
 
-class FooterItem : RecyctItemBase() {
-    override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
-        return object : RecyctViewHolder(inflater, parent, R.layout.item_footer) {
-            private val textView: TextView = itemView.findViewById(R.id.footerText)
-            override fun bind(data: Any, atIndex: Int) {
-                textView.text = itemView.context.getString(R.string.label_footer, data.toString())
-            }
-        }
-    }
-}
-
-class SectionTitleItem : RecyctItemBase() {
-    override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder = object : RecyctViewHolder(inflater, parent, R.layout.item_section_title) {
-        val textView: TextView = itemView.findViewById(R.id.sectionTitle_titleText)
-        override fun bind(data: Any, atIndex: Int) {
-            (data as? String)?.let {
-                textView.text = it
-            }
-            itemView.setOnClickListener {
-                Toast.makeText(it.context, "Section title at group index: $atIndex", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-}
-
-class MyRecyctItem(private val type: String, private val color: Int) : RecyctItemBase() {
-
-    override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
-        return object : RecyctViewHolder(inflater, parent, R.layout.item_basic) {
-
-            private val contentText: TextView = itemView.findViewById(R.id.contentText)
-            private val labelText: TextView = itemView.findViewById(R.id.typeLabelText)
-
-            override fun bind(data: Any, atIndex: Int) {
-                val dataString = when (data) {
-                    is Int -> data.toString()
-                    is String -> data
-                    else -> "Unknown"
+class SectionTitleItem : RecyctItem() {
+    override fun create(inflater: LayoutInflater, parent: ViewGroup) =
+        object : BindingRecyctViewHolder<ItemSectionTitleBinding>(
+            ItemSectionTitleBinding.inflate(inflater, parent, false), this
+        ) {
+            override fun bind(data: Any, dataIndex: Int, itemIndex: Int) {
+                (data as? String)?.let {
+                    binding.sectionTitleTitleText.text = it
                 }
-                labelText.text = itemView.context.getString(R.string.label_type, type)
-                labelText.textColor = color
+                itemView.setOnClickListener {
+                    Toast.makeText(
+                        it.context,
+                        "Section title at group index[$dataIndex] item index[$itemIndex]",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+}
+
+class MyRecyctItem(private val type: String, private val color: Int) : RecyctItem() {
+    override fun create(inflater: LayoutInflater, parent: ViewGroup) = object :
+        BindingRecyctViewHolder<ItemBasicBinding>(
+            ItemBasicBinding.inflate(inflater, parent, false),
+            this
+        ) {
+        override fun bind(data: Any, dataIndex: Int, itemIndex: Int) {
+            val dataString = when (data) {
+                is Int -> data.toString()
+                is String -> data
+                else -> "Unknown"
+            }
+            binding.run {
+                typeLabelText.text = itemView.context.getString(R.string.label_type, type)
+                typeLabelText.setTextColor(color)
                 contentText.text = itemView.context.getString(R.string.label_item, dataString)
             }
-
         }
     }
-
 }

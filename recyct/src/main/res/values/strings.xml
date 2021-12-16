@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Recyctance</string>
+
+    <string name="retry">Retry</string>
 </resources>

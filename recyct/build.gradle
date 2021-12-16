@@ -1,26 +1,25 @@
-apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 group = 'com.github.showang'
 
+apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-parcelize'
 apply plugin: 'jacoco'
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 31
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 28
-        versionCode 4
-        versionName "0.0.4"
+        minSdkVersion 9
+        targetSdkVersion 31
+        versionCode 100
+        versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+
+    buildFeatures {
+        viewBinding true
     }
 
     buildTypes {
@@ -51,24 +50,20 @@ ext {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.1.1"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.1.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_version"
 
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'com.google.android.material:material:1.0.0'
-    implementation 'androidx.recyclerview:recyclerview:1.1.0'
+    implementation 'androidx.appcompat:appcompat:1.4.0'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
 
-    testImplementation 'junit:junit:4.12'
-    testImplementation "org.mockito:mockito-core:2.22.0"
+    testImplementation 'junit:junit:4.13.2'
+    def mockkVersion = '1.12.1'
+    testImplementation "io.mockk:mockk:$mockkVersion"
+    testImplementation "io.mockk:mockk-agent-jvm:$mockkVersion"
 
-    testImplementation "org.powermock:powermock-api-mockito2:$powermock_version"
-    testImplementation "org.powermock:powermock-module-junit4:$powermock_version"
-    testImplementation "org.powermock:powermock-module-junit4-rule:$powermock_version"
-    testImplementation "org.powermock:powermock-classloading-xstream:$powermock_version"
-
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    androidTestImplementation 'androidx.test:runner:1.4.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 }
 
 task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
@@ -80,7 +75,7 @@ task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
         html.enabled = true
     }
 
-    classDirectories = fileTree(
+    getClassDirectories().setFrom(fileTree(
             dir: "$buildDir/tmp/kotlin-classes/debug",
             excludes: ['**/R.class',
                        '**/R$*.class',
@@ -93,9 +88,26 @@ task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
                        '**/*Activity*.*',
                        '**/CiMattersApplication*.*',
                        'android/**/*.*']
-    )
+    ))
+//    classDirectories = fileTree(
+//            dir: "$buildDir/tmp/kotlin-classes/debug",
+//            excludes: ['**/R.class',
+//                       '**/R$*.class',
+//                       '**/*$ViewBinder*.*',
+//                       '**/*$InjectAdapter*.*',
+//                       '**/*Injector*.*',
+//                       '**/BuildConfig.*',
+//                       '**/Manifest*.*',
+//                       '**/*Test*.*',
+//                       '**/*Activity*.*',
+//                       '**/CiMattersApplication*.*',
+//                       'android/**/*.*']
+//    )
 
-    additionalSourceDirs = files(coverageSourceDirs)
-    sourceDirectories = files('src/main/java')
-    executionData = files("$buildDir/jacoco/testDebugUnitTest.exec")
+    getAdditionalSourceDirs().setFrom(files(coverageSourceDirs))
+//    additionalSourceDirs = files(coverageSourceDirs)
+    getSourceDirectories().setFrom(files('src/main/java'))
+//    sourceDirectories = files('src/main/java')
+    getExecutionData().setFrom(files("$buildDir/jacoco/testDebugUnitTest.exec"))
+//    executionData = files("$buildDir/jacoco/testDebugUnitTest.exec")
 }

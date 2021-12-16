@@ -3,34 +3,34 @@ package me.showang.recyct.items
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import me.showang.recyct.R
-import me.showang.recyct.RecyctViewHolder
+import me.showang.recyct.BindingRecyctViewHolder
+import me.showang.recyct.databinding.ItemLoadMoreBinding
 
-class DefaultLoadMoreItem(private val onLoadMoreCallback: (() -> Unit)? = null,
-                          private val retryDelegate: (() -> Unit)) : RecyctItemBase() {
+class DefaultLoadMoreItem(
+    private val onLoadMoreCallback: (() -> Unit)? = null,
+    private val retryDelegate: (() -> Unit)
+) : RecyctItem() {
 
-    override fun create(inflater: LayoutInflater, parent: ViewGroup): RecyctViewHolder {
-        return object : RecyctViewHolder(inflater, parent, R.layout.item_load_more) {
-
-            private val progress: View by id(R.id.progress)
-            private val retryButton: View by id(R.id.retryButton)
-
+    override fun create(inflater: LayoutInflater, parent: ViewGroup) =
+        object : BindingRecyctViewHolder<ItemLoadMoreBinding>(
+            ItemLoadMoreBinding.inflate(inflater, parent, false),
+            this
+        ) {
             init {
-                retryButton.setOnClickListener {
+                binding.retryButton.setOnClickListener {
                     retryDelegate.invoke()
                 }
             }
 
-            override fun bind(data: Any, atIndex: Int) {
+            override fun bind(data: Any, dataIndex: Int, itemIndex: Int) = binding.run {
                 if (data == true) { // onLoadMoreError
                     retryButton.visibility = View.VISIBLE
                     progress.visibility = View.GONE
                 } else {
+                    itemView.post { onLoadMoreCallback?.invoke() }
                     progress.visibility = View.VISIBLE
                     retryButton.visibility = View.GONE
-                    itemView.post { onLoadMoreCallback?.invoke() }
                 }
             }
         }
-    }
 }
