@@ -8,12 +8,13 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.showang.recyct.items.viewholder.BindingRecyctViewHolder
 import me.showang.recyct.RecyctAdapter
 import me.showang.recyct.example.databinding.*
 import me.showang.recyct.items.RecyctItem
+import me.showang.recyct.items.viewholder.BindingRecyctViewHolder
 import org.koin.android.ext.android.inject
 import org.koin.core.qualifier.named
 
@@ -56,8 +57,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var loadMoreJob: Job? = null
+
     private fun onLoadMore() {
-        CoroutineScope(Main).launch {
+        if (loadMoreJob != null) return
+        loadMoreJob = CoroutineScope(Main).launch {
             adapter?.run {
                 delay(3000)
                 enableLoadMore = false

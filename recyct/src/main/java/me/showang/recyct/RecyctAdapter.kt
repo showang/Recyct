@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
+import me.showang.recyct.groups.*
 import me.showang.recyct.items.DefaultLoadMoreItem
 import me.showang.recyct.items.RecyctItem
 import me.showang.recyct.items.viewholder.RecyctViewHolder
@@ -27,6 +28,7 @@ open class RecyctAdapter(
             ?: 0) - if (hasSectionTitle) sectionIndex(itemIndex) + 1 else 0
     }
     private val viewHolderTypeMap = mutableMapOf<Int, RecyctItem>()
+    private var currentStrategy: TypeStrategy = BasicStrategy(dataGroup, ::customViewHolderTypes)
 
     private var headerItem: RecyctItem? = null
     private var footerItem: RecyctItem? = null
@@ -58,8 +60,8 @@ open class RecyctAdapter(
         if (hasSectionTitle) {
             sectionTitleData
                 ?: throw IllegalArgumentException("You have to insert section title data when insert a new group.")
-            this.sectionTitleData.add(sectionTitleData)
         }
+        sectionTitleData?.let(this.sectionTitleData::add)
     }
 
     fun register(
@@ -78,6 +80,15 @@ open class RecyctAdapter(
     ) {
         headerItem.initData = withData
         this.headerItem = headerItem.apply { itemClickDelegate = clickListener }
+        decorateStrategy()
+    }
+
+    private fun decorateStrategy() {
+        currentStrategy = currentStrategy.root.let {
+            headerItem?.run { HeaderDecorator(it) } ?: it
+        }.let {
+            footerItem?.run { FooterDecorator(it) { enableLoadMore } } ?: it
+        }
     }
 
     fun registerFooter(
@@ -86,9 +97,8 @@ open class RecyctAdapter(
         clickListener: ((data: Any, dataIndex: Int, itemIndex: Int) -> Unit)? = null
     ) {
         footerItem.initData = data
-        this.footerItem = footerItem.apply {
-            itemClickDelegate = clickListener
-        }
+        this.footerItem = footerItem.apply { itemClickDelegate = clickListener }
+        decorateStrategy()
     }
 
     fun updateHeader(data: Any) {
@@ -107,10 +117,12 @@ open class RecyctAdapter(
 
     fun unregisterHeader() {
         headerItem = null
+        decorateStrategy()
     }
 
     fun unregisterFooter() {
         footerItem = null
+        decorateStrategy()
     }
 
     fun defaultLoadMore(loadMoreCallback: (() -> Unit)? = null) {
@@ -123,30 +135,12 @@ open class RecyctAdapter(
         this.sectionTitleItem = sectionItem
         if (sectionData.size < dataGroup.size) throw IllegalArgumentException("section data is not enough.")
         this.sectionTitleData = sectionData.toMutableList()
+        currentStrategy = SectionTitleStrategy(dataGroup, ::customViewHolderTypes)
+        decorateStrategy()
     }
 
     protected open fun customViewHolderTypes(dataIndex: Int): Int {
         return TYPE_DEFAULT
-    }
-
-    private fun itemTypeByUserDef(itemIndex: Int): Int {
-        val index = itemIndex - (headerItem?.run { 1 } ?: 0)
-        if (sectionTitleItem == null) return customViewHolderTypes(index)
-
-        var sectionCount = 0
-        var itemCounter = 0
-        for (dataList in dataGroup) {
-            val currentCount = itemCounter + sectionCount
-            val groupMaxIndex = currentCount - 1 // Size to Index
-            if (index == currentCount) {
-                return TYPE_SECTION_TITLE
-            } else if (index < groupMaxIndex) {
-                break
-            }
-            sectionCount++
-            itemCounter += dataList.size
-        }
-        return customViewHolderTypes(index - sectionCount)
     }
 
     private fun checkTypeReserved(type: Int) {
@@ -162,25 +156,7 @@ open class RecyctAdapter(
     }
 
     final override fun getItemViewType(position: Int): Int {
-        val dataSize = dataLength + if (hasSectionTitle) dataGroup.size else 0
-        return when (position) {
-            0 -> {
-                headerItem?.run { TYPE_HEADER }
-                    ?: if (dataSize == 0) lastItemType(position, ::itemTypeByUserDef)
-                    else itemTypeByUserDef(position)
-            }
-            dataSize -> {
-                headerItem?.run { itemTypeByUserDef(position) }
-                    ?: lastItemType(position, ::itemTypeByUserDef)
-            }
-            dataSize + 1 -> lastItemType(position, ::itemTypeByUserDef)
-            else -> itemTypeByUserDef(position)
-        }
-    }
-
-    private fun lastItemType(position: Int, otherwise: (Int) -> Int): Int {
-        return if (isLoadMoreEnabled) TYPE_LOAD_MORE
-        else footerItem?.run { TYPE_FOOTER } ?: otherwise(position)
+        return currentStrategy.itemType(position)
     }
 
     final override fun onCreateViewHolder(
@@ -201,10 +177,7 @@ open class RecyctAdapter(
         } ?: throw Error("No RecyctItem registered.")
 
     final override fun getItemCount(): Int {
-        return dataSectionCount + (headerItem?.let { 1 } ?: 0) + when {
-            isLoadMoreEnabled || footerItem != null -> 1
-            else -> 0
-        }
+        return currentStrategy.itemCount
     }
 
     final override fun onBindViewHolder(

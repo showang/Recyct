@@ -7,12 +7,12 @@ apply plugin: 'kotlin-parcelize'
 apply plugin: 'jacoco'
 
 android {
-    compileSdkVersion 31
+    compileSdkVersion 30
     buildToolsVersion "30.0.2"
 
     defaultConfig {
         minSdkVersion 14
-        targetSdkVersion 31
+        targetSdkVersion 30
         versionCode 100
         versionName "1.0.0"
 
@@ -57,12 +57,6 @@ android {
 
 }
 
-ext {
-    supportLibraryVersion = "28.0.0"
-    anko_version = '0.10.4'
-    coverageSourceDirs = 'src/test/java'
-}
-
 dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version"
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_version"
@@ -81,9 +75,6 @@ dependencies {
 }
 
 task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
-//    group = "Reporting"
-//    description = "Generate Jacoco coverage reports for Debug build"
-
     reports {
         xml.enabled = true
         html.enabled = true
@@ -100,10 +91,4 @@ task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
     classDirectories.from = debugTree
     sourceDirectories.from = files([mainSrc])
     executionData.from = files("$buildDir/jacoco/testDebugUnitTest.exec")
-//    getAdditionalSourceDirs().setFrom(files(coverageSourceDirs))
-//    additionalSourceDirs = files(coverageSourceDirs)
-//    getSourceDirectories().setFrom(files('src/main/java'))
-//    sourceDirectories = files('src/main/java')
-//    getExecutionData().setFrom(files("$buildDir/jacoco/testDebugUnitTest.exec"))
-//    executionData = files("$buildDir/jacoco/testDebugUnitTest.exec")
 }

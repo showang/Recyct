@@ -16,7 +16,7 @@ interface TypeStrategy {
 
 class BasicStrategy(
     private val dataGroup: List<List<Any>>,
-    private val customViewHolderTypes: (Int) -> Int = { TYPE_DEFAULT }
+    private val customViewHolderTypes: (Int) -> Int
 ) : TypeStrategy {
     override fun itemType(adapterIndex: Int): Int {
         return customViewHolderTypes(adapterIndex)
@@ -29,7 +29,7 @@ class BasicStrategy(
 
 class SectionTitleStrategy(
     private val dataGroup: List<List<Any>>,
-    private val customViewHolderTypes: (Int) -> Int = { TYPE_DEFAULT }
+    private val customViewHolderTypes: (Int) -> Int
 ) : TypeStrategy {
 
     override fun itemType(adapterIndex: Int): Int {
