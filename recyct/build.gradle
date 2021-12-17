@@ -8,9 +8,10 @@ apply plugin: 'jacoco'
 
 android {
     compileSdkVersion 31
+    buildToolsVersion "30.0.2"
 
     defaultConfig {
-        minSdkVersion 9
+        minSdkVersion 14
         targetSdkVersion 31
         versionCode 100
         versionName "1.0.0"
@@ -38,6 +39,20 @@ android {
 
             includeAndroidResources = true
         }
+        unitTests.all {
+            if (name == "testDebugUnitTest") {
+                kover {
+                    enabled = true
+                    binaryReportFile.set(file("$buildDir/custom/debug-report.bin"))
+                    includes = ['me.showang.recyct.*']
+                    excludes = ['com.example.subpackage.*']
+                }
+            } else {
+                kover {
+                    enabled = false
+                }
+            }
+        }
     }
 
 }
@@ -46,7 +61,6 @@ ext {
     supportLibraryVersion = "28.0.0"
     anko_version = '0.10.4'
     coverageSourceDirs = 'src/test/java'
-    powermock_version = '2.0.0-beta.5'
 }
 
 dependencies {
@@ -67,47 +81,29 @@ dependencies {
 }
 
 task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
-    group = "Reporting"
-    description = "Generate Jacoco coverage reports for Debug build"
+//    group = "Reporting"
+//    description = "Generate Jacoco coverage reports for Debug build"
 
     reports {
         xml.enabled = true
         html.enabled = true
     }
 
-    getClassDirectories().setFrom(fileTree(
-            dir: "$buildDir/tmp/kotlin-classes/debug",
-            excludes: ['**/R.class',
-                       '**/R$*.class',
-                       '**/*$ViewBinder*.*',
-                       '**/*$InjectAdapter*.*',
-                       '**/*Injector*.*',
-                       '**/BuildConfig.*',
-                       '**/Manifest*.*',
-                       '**/*Test*.*',
-                       '**/*Activity*.*',
-                       '**/CiMattersApplication*.*',
-                       'android/**/*.*']
-    ))
-//    classDirectories = fileTree(
-//            dir: "$buildDir/tmp/kotlin-classes/debug",
-//            excludes: ['**/R.class',
-//                       '**/R$*.class',
-//                       '**/*$ViewBinder*.*',
-//                       '**/*$InjectAdapter*.*',
-//                       '**/*Injector*.*',
-//                       '**/BuildConfig.*',
-//                       '**/Manifest*.*',
-//                       '**/*Test*.*',
-//                       '**/*Activity*.*',
-//                       '**/CiMattersApplication*.*',
-//                       'android/**/*.*']
-//    )
+    def fileFilter = ['**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*', 'android/**/*.*']
+    def debugTree = fileTree(dir:
+//            "$buildDir/intermediates/jacoco_instrumented_classes/debug",
+            "$buildDir/tmp/kotlin-classes/debug"
+            , excludes: fileFilter)
+    def mainSrc = "${project.projectDir}/src/main/java"
+    def testSrc = "${project.projectDir}/scr/test/java"
 
-    getAdditionalSourceDirs().setFrom(files(coverageSourceDirs))
+    classDirectories.from = debugTree
+    sourceDirectories.from = files([mainSrc])
+    executionData.from = files("$buildDir/jacoco/testDebugUnitTest.exec")
+//    getAdditionalSourceDirs().setFrom(files(coverageSourceDirs))
 //    additionalSourceDirs = files(coverageSourceDirs)
-    getSourceDirectories().setFrom(files('src/main/java'))
+//    getSourceDirectories().setFrom(files('src/main/java'))
 //    sourceDirectories = files('src/main/java')
-    getExecutionData().setFrom(files("$buildDir/jacoco/testDebugUnitTest.exec"))
+//    getExecutionData().setFrom(files("$buildDir/jacoco/testDebugUnitTest.exec"))
 //    executionData = files("$buildDir/jacoco/testDebugUnitTest.exec")
 }

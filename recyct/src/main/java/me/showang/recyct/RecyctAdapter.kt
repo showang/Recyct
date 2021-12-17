@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
 import me.showang.recyct.items.DefaultLoadMoreItem
 import me.showang.recyct.items.RecyctItem
+import me.showang.recyct.items.viewholder.RecyctViewHolder
 
 open class RecyctAdapter(
     vararg data: List<Any>,
@@ -257,7 +258,7 @@ open class RecyctAdapter(
     }
 
     companion object {
-        const val TYPE_DEFAULT = 0
+        const val TYPE_DEFAULT = Int.MAX_VALUE
         const val TYPE_HEADER = Int.MAX_VALUE - 1
         const val TYPE_FOOTER = Int.MAX_VALUE - 2
         const val TYPE_LOAD_MORE = Int.MAX_VALUE - 3

@@ -14,9 +14,11 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
 
         classpath 'com.github.dcendents:android-maven-gradle-plugin:2.1'
+        classpath 'org.jetbrains.kotlinx:kover:0.4.4'
         classpath 'org.jacoco:org.jacoco.core:0.8.7'
     }
 }
+apply plugin: 'kover'
 
 allprojects {
     repositories {

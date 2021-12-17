@@ -3,7 +3,7 @@ package me.showang.recyct.items
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import me.showang.recyct.BindingRecyctViewHolder
+import me.showang.recyct.items.viewholder.BindingRecyctViewHolder
 import me.showang.recyct.databinding.ItemLoadMoreBinding
 
 class DefaultLoadMoreItem(

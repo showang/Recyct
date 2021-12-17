@@ -10,7 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import me.showang.recyct.BindingRecyctViewHolder
+import me.showang.recyct.items.viewholder.BindingRecyctViewHolder
 import me.showang.recyct.RecyctAdapter
 import me.showang.recyct.example.databinding.*
 import me.showang.recyct.items.RecyctItem
