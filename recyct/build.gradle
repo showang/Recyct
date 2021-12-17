@@ -1,26 +1,26 @@
-apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 group = 'com.github.showang'
 
+apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-parcelize'
 apply plugin: 'jacoco'
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 30
+    buildToolsVersion "30.0.2"
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 28
-        versionCode 4
-        versionName "0.0.4"
+        minSdkVersion 14
+        targetSdkVersion 30
+        versionCode 100
+        versionName "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
     }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+
+    buildFeatures {
+        viewBinding true
     }
 
     buildTypes {
@@ -39,63 +39,56 @@ android {
 
             includeAndroidResources = true
         }
+        unitTests.all {
+            if (name == "testDebugUnitTest") {
+                kover {
+                    enabled = true
+                    binaryReportFile.set(file("$buildDir/custom/debug-report.bin"))
+                    includes = ['me.showang.recyct.*']
+                    excludes = ['com.example.subpackage.*']
+                }
+            } else {
+                kover {
+                    enabled = false
+                }
+            }
+        }
     }
 
 }
 
-ext {
-    supportLibraryVersion = "28.0.0"
-    anko_version = '0.10.4'
-    coverageSourceDirs = 'src/test/java'
-    powermock_version = '2.0.0-beta.5'
-}
-
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.1.1"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.1.1"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_version"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_version"
 
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation 'com.google.android.material:material:1.0.0'
-    implementation 'androidx.recyclerview:recyclerview:1.1.0'
+    implementation 'androidx.appcompat:appcompat:1.4.0'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
 
-    testImplementation 'junit:junit:4.12'
-    testImplementation "org.mockito:mockito-core:2.22.0"
+    testImplementation 'junit:junit:4.13.2'
+    def mockkVersion = '1.12.1'
+    testImplementation "io.mockk:mockk:$mockkVersion"
+    testImplementation "io.mockk:mockk-agent-jvm:$mockkVersion"
 
-    testImplementation "org.powermock:powermock-api-mockito2:$powermock_version"
-    testImplementation "org.powermock:powermock-module-junit4:$powermock_version"
-    testImplementation "org.powermock:powermock-module-junit4-rule:$powermock_version"
-    testImplementation "org.powermock:powermock-classloading-xstream:$powermock_version"
-
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    androidTestImplementation 'androidx.test:runner:1.4.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 }
 
 task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
-    group = "Reporting"
-    description = "Generate Jacoco coverage reports for Debug build"
-
     reports {
         xml.enabled = true
         html.enabled = true
     }
 
-    classDirectories = fileTree(
-            dir: "$buildDir/tmp/kotlin-classes/debug",
-            excludes: ['**/R.class',
-                       '**/R$*.class',
-                       '**/*$ViewBinder*.*',
-                       '**/*$InjectAdapter*.*',
-                       '**/*Injector*.*',
-                       '**/BuildConfig.*',
-                       '**/Manifest*.*',
-                       '**/*Test*.*',
-                       '**/*Activity*.*',
-                       '**/CiMattersApplication*.*',
-                       'android/**/*.*']
-    )
+    def fileFilter = ['**/R.class', '**/R$*.class', '**/BuildConfig.*', '**/Manifest*.*', '**/*Test*.*', 'android/**/*.*']
+    def debugTree = fileTree(dir:
+//            "$buildDir/intermediates/jacoco_instrumented_classes/debug",
+            "$buildDir/tmp/kotlin-classes/debug"
+            , excludes: fileFilter)
+    def mainSrc = "${project.projectDir}/src/main/java"
+    def testSrc = "${project.projectDir}/scr/test/java"
 
-    additionalSourceDirs = files(coverageSourceDirs)
-    sourceDirectories = files('src/main/java')
-    executionData = files("$buildDir/jacoco/testDebugUnitTest.exec")
+    classDirectories.from = debugTree
+    sourceDirectories.from = files([mainSrc])
+    executionData.from = files("$buildDir/jacoco/testDebugUnitTest.exec")
 }
