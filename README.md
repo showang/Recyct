@@ -1,4 +1,4 @@
-[![](https://jitpack.io/v/showang/Recyct.svg)](https://jitpack.io/#showang/Recyct) [![Build Status](https://travis-ci.org/showang/Recyct.svg?branch=master)](https://travis-ci.org/showang/Recyct) [![codecov](https://codecov.io/gh/showang/Recyct/branch/master/graph/badge.svg)](https://codecov.io/gh/showang/Recyct)
+[![](https://jitpack.io/v/showang/Recyct.svg)](https://jitpack.io/#showang/Recyct) [![Build Status](https://travis-ci.org/showang/Recyct.svg?branch=master)](https://travis-ci.org/showang/Recyct) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/5a316ef6e3b64f4b90ab4fd2c265fc66)](https://www.codacy.com/gh/showang/Recyct/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=showang/Recyct&amp;utm_campaign=Badge_Grade) [![codecov](https://codecov.io/gh/showang/Recyct/branch/master/graph/badge.svg)](https://codecov.io/gh/showang/Recyct)
 
 # Recyct
 A library which helps you build recycler view easier.
