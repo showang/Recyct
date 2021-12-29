@@ -1,3 +1,4 @@
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/4d9f94f9be7a4aec99a363653ac644da)](https://app.codacy.com/gh/showang/Recyct?utm_source=github.com&utm_medium=referral&utm_content=showang/Recyct&utm_campaign=Badge_Grade_Settings)
 [![](https://jitpack.io/v/showang/Recyct.svg)](https://jitpack.io/#showang/Recyct) [![Build Status](https://travis-ci.org/showang/Recyct.svg?branch=master)](https://travis-ci.org/showang/Recyct) [![codecov](https://codecov.io/gh/showang/Recyct/branch/master/graph/badge.svg)](https://codecov.io/gh/showang/Recyct)
 
 # Recyct
