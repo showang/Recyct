@@ -1,7 +1,6 @@
 package me.showang.recyct.groups
 
 import me.showang.recyct.RecyctAdapter
-import me.showang.recyct.RecyctAdapter.Companion.TYPE_DEFAULT
 import me.showang.recyct.RecyctAdapter.Companion.TYPE_FOOTER
 import me.showang.recyct.RecyctAdapter.Companion.TYPE_HEADER
 import me.showang.recyct.RecyctAdapter.Companion.TYPE_LOAD_MORE
@@ -36,11 +35,11 @@ class SectionTitleStrategy(
         var sectionCount = 0
         var itemCounter = 0
         for (dataList in dataGroup) {
-            val currentCount = itemCounter + sectionCount
-            val groupMaxIndex = currentCount - 1 // Size to Index
+            val currentCount = sectionCount +
+                    if (itemCounter != 0) itemCounter else 0
             if (adapterIndex == currentCount) {
                 return RecyctAdapter.TYPE_SECTION_TITLE
-            } else if (adapterIndex < groupMaxIndex) {
+            } else if (adapterIndex < currentCount) {
                 break
             }
             sectionCount++
