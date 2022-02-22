@@ -1,10 +1,7 @@
 package me.showang.recyct
 
-import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.withContext
@@ -13,14 +10,14 @@ import me.showang.recyct.items.DefaultLoadMoreItem
 import me.showang.recyct.items.RecyctItem
 import me.showang.recyct.items.viewholder.RecyctViewHolder
 
+@Suppress("unused")
 open class RecyctAdapter(
-    vararg data: List<Any>,
-    diffItemCallback: DiffUtil.ItemCallback<Any> = defaultDiffer
-) : ListAdapter<Any, RecyclerView.ViewHolder>(diffItemCallback) {
+    vararg data: List<Any>
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val dataGroup = mutableListOf<List<Any>>().apply { addAll(data) }
     private val unionData: List<Any> get() = dataGroup.flatten()
-    private val dataLength: Int get() = dataGroup.map { it.size }.sum()
+    private val dataLength: Int get() = dataGroup.sumOf { it.size }
     private val dataSectionCount: Int get() = dataLength + if (hasSectionTitle) dataGroup.size else 0
 
     private val dataIndex = { itemIndex: Int ->
@@ -35,7 +32,7 @@ open class RecyctAdapter(
     private var loadMoreItem: RecyctItem? = null
 
     private var sectionTitleItem: RecyctItem? = null
-    private var sectionTitleData: MutableList<Any> = mutableListOf()
+    private var sectionDataDelegate: (Int) -> Any = {}
     private val hasSectionTitle: Boolean get() = sectionTitleItem != null
     private val sectionIndex = { itemIndex: Int ->
         val index = itemIndex - (headerItem?.run { 1 } ?: 0)
@@ -55,13 +52,8 @@ open class RecyctAdapter(
     var isLoadMoreFail: Boolean by didSet(false, ::updateLoadMoreState)
     private val isLoadMoreEnabled get() = enableLoadMore && loadMoreItem != null
 
-    fun appendDataGroup(dataList: List<Any>, sectionTitleData: Any? = null) {
-        dataGroup.add(dataList)
-        if (hasSectionTitle) {
-            sectionTitleData
-                ?: throw IllegalArgumentException("You have to insert section title data when insert a new group.")
-        }
-        sectionTitleData?.let(this.sectionTitleData::add)
+    fun appendDataGroup(dataList: List<Any>) {
+        dataGroup.add(dataList.toMutableList())
     }
 
     fun register(
@@ -83,21 +75,21 @@ open class RecyctAdapter(
         decorateStrategy()
     }
 
-    private fun decorateStrategy() {
-        currentStrategy = currentStrategy.root.let {
+    private fun decorateStrategy(basicStrategy: TypeStrategy = currentStrategy) {
+        currentStrategy = basicStrategy.root.let {
             headerItem?.run { HeaderDecorator(it) } ?: it
         }.let {
-            footerItem?.run { FooterDecorator(it) { enableLoadMore } } ?: it
+            FooterDecorator(it, { enableLoadMore }) { footerItem != null }
         }
     }
 
     fun registerFooter(
-        footerItem: RecyctItem,
+        item: RecyctItem,
         data: Any? = null,
         clickListener: ((data: Any, dataIndex: Int, itemIndex: Int) -> Unit)? = null
     ) {
-        footerItem.initData = data
-        this.footerItem = footerItem.apply { itemClickDelegate = clickListener }
+        item.initData = data
+        footerItem = item.apply { itemClickDelegate = clickListener }
         decorateStrategy()
     }
 
@@ -111,8 +103,14 @@ open class RecyctAdapter(
     fun updateFooter(data: Any) {
         footerItem?.apply {
             initData = data
-            notifyItemChanged(dataSectionCount + (headerItem?.run { 1 } ?: 0))
+            notifyItemChanged(currentStrategy.itemCount - 1)
         }
+    }
+
+    fun updateDataGroup(newDataGroup: List<List<Any>>) {
+        dataGroup.clear()
+        dataGroup.addAll(newDataGroup)
+        decorateStrategy(SectionTitleStrategy(dataGroup, ::customViewHolderTypes))
     }
 
     fun unregisterHeader() {
@@ -129,14 +127,13 @@ open class RecyctAdapter(
         loadMoreItem = DefaultLoadMoreItem(loadMoreCallback) {
             isLoadMoreFail = false
         }
+        decorateStrategy()
     }
 
-    fun sectionsByGroup(sectionItem: RecyctItem, sectionData: List<Any>) {
-        this.sectionTitleItem = sectionItem
-        if (sectionData.size < dataGroup.size) throw IllegalArgumentException("section data is not enough.")
-        this.sectionTitleData = sectionData.toMutableList()
-        currentStrategy = SectionTitleStrategy(dataGroup, ::customViewHolderTypes)
-        decorateStrategy()
+    fun sectionsByGroup(sectionItem: RecyctItem, dataDelegate: (Int) -> Any) {
+        sectionTitleItem = sectionItem
+        sectionDataDelegate = dataDelegate
+        decorateStrategy(SectionTitleStrategy(dataGroup, ::customViewHolderTypes))
     }
 
     protected open fun customViewHolderTypes(dataIndex: Int): Int {
@@ -174,7 +171,17 @@ open class RecyctAdapter(
             create(LayoutInflater.from(parent.context), parent)?.apply {
                 defaultClickDelegate = itemClickDelegate
             }
-        } ?: throw Error("No RecyctItem registered.")
+        } ?: throw Error(
+            "No RecyctItem registered with type: ${
+                when (type) {
+                    TYPE_HEADER -> "TYPE_HEADER"
+                    TYPE_FOOTER -> "TYPE_FOOTER"
+                    TYPE_LOAD_MORE -> "TYPE_LOAD_MORE"
+                    TYPE_SECTION_TITLE -> "TYPE_SECTION_TITLE"
+                    else -> viewHolderTypeMap[type].toString()
+                }
+            }"
+        )
 
     final override fun getItemCount(): Int {
         return currentStrategy.itemCount
@@ -200,9 +207,7 @@ open class RecyctAdapter(
             TYPE_FOOTER -> footerItem?.initData?.let { Pair(it, 0) }
             TYPE_LOAD_MORE -> Pair(isLoadMoreFail, 0)
             TYPE_SECTION_TITLE -> sectionIndex(itemIndex).let { sectionIndex ->
-                if (sectionIndex < sectionTitleData.size)
-                    Pair(sectionTitleData[sectionIndex], sectionIndex)
-                else null
+                Pair(sectionDataDelegate(sectionIndex), sectionIndex)
             }
             else -> dataIndex(itemIndex).let { Pair(unionData[it], it) }
         }
@@ -215,6 +220,12 @@ open class RecyctAdapter(
         }
     }
 
+    fun clearData() {
+        val size = itemCount
+        dataGroup.clear()
+        notifyItemRangeRemoved(0, size)
+    }
+
     suspend fun notifyGroupDataChanged(
         groupDataIndex: Int,
         groupIndex: Int = 0
@@ -224,8 +235,8 @@ open class RecyctAdapter(
             for (index in 0 until groupIndex) {
                 itemCount += dataGroup[index].size
             }
-            itemCount += headerItem?.run { 1 } ?: 0
-            itemCount += sectionTitleItem?.run { groupIndex + 1 } ?: 0
+            headerItem?.run { itemCount += 1 }
+            sectionTitleItem?.run { itemCount += (groupIndex + 1) }
         }
         notifyItemChanged(itemCount)
     }
@@ -236,16 +247,5 @@ open class RecyctAdapter(
         const val TYPE_FOOTER = Int.MAX_VALUE - 2
         const val TYPE_LOAD_MORE = Int.MAX_VALUE - 3
         const val TYPE_SECTION_TITLE = Int.MAX_VALUE - 4
-
-        private val defaultDiffer = object : DiffUtil.ItemCallback<Any>() {
-            override fun areItemsTheSame(oldItem: Any, newItem: Any): Boolean {
-                return oldItem == newItem
-            }
-
-            @SuppressLint("DiffUtilEquals")
-            override fun areContentsTheSame(oldItem: Any, newItem: Any): Boolean {
-                return oldItem == newItem
-            }
-        }
     }
 }

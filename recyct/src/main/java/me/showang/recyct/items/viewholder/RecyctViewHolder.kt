@@ -4,13 +4,8 @@ import android.content.Context
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import me.showang.recyct.didSetNullable
-import me.showang.recyct.items.RecyctItem
 
-abstract class RecyctViewHolder(
-    itemView: View,
-    val parentItem: RecyctItem
-) : RecyclerView.ViewHolder(itemView) {
-
+abstract class RecyctViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
     var currentData: Any? = null
     var currentDataIndex: Int = -1
     var currentItemIndex: Int = -1

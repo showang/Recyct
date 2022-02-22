@@ -13,8 +13,7 @@ abstract class LegacyRecyctViewHolder(
     @LayoutRes resId: Int,
     inflater: LayoutInflater,
     parent: ViewGroup?,
-    parentItem: RecyctItem
-) : RecyctViewHolder(inflater.inflate(resId, parent, false), parentItem) {
+) : RecyctViewHolder(inflater.inflate(resId, parent, false)) {
 
     protected fun <T : View> id(@IdRes resId: Int) =
         object : ObservableProperty<T>(itemView.findViewById<T>(resId)) {}

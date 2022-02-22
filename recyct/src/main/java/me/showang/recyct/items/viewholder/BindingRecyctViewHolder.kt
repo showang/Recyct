@@ -5,5 +5,4 @@ import me.showang.recyct.items.RecyctItem
 
 abstract class BindingRecyctViewHolder<Binding : ViewBinding>(
     protected val binding: Binding,
-    parentItem: RecyctItem
-) : RecyctViewHolder(binding.root, parentItem)
+) : RecyctViewHolder(binding.root)

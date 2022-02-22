@@ -13,8 +13,7 @@ class DefaultLoadMoreItem(
 
     override fun create(inflater: LayoutInflater, parent: ViewGroup) =
         object : BindingRecyctViewHolder<ItemLoadMoreBinding>(
-            ItemLoadMoreBinding.inflate(inflater, parent, false),
-            this
+            ItemLoadMoreBinding.inflate(inflater, parent, false)
         ) {
             init {
                 binding.retryButton.setOnClickListener {

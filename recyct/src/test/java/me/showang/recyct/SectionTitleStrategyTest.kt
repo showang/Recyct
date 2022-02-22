@@ -58,7 +58,10 @@ class SectionTitleStrategyTest {
         )
         val dataCount = dataGroup.flatten().size
         var isLoadMore = false
-        FooterDecorator(SectionTitleStrategy(dataGroup) { TYPE_DEFAULT }) { isLoadMore }.run {
+        val hasFooter = true
+        FooterDecorator(
+            SectionTitleStrategy(dataGroup) { TYPE_DEFAULT },
+            { isLoadMore }) { hasFooter }.run {
             assert(itemCount == dataCount + dataGroup.size + 1)
             assert(itemType(0) == RecyctAdapter.TYPE_SECTION_TITLE)
             assert(itemType(1) == TYPE_DEFAULT)
@@ -83,7 +86,13 @@ class SectionTitleStrategyTest {
         )
         val dataCount = dataGroup.flatten().size
         var isLoadMore = false
-        FooterDecorator(HeaderDecorator(SectionTitleStrategy(dataGroup) { TYPE_DEFAULT })) { isLoadMore }.run {
+        val hasFooter = true
+        FooterDecorator(
+            HeaderDecorator(
+                SectionTitleStrategy(dataGroup) { TYPE_DEFAULT }
+            ),
+            { isLoadMore }
+        ) { hasFooter }.run {
             assert(itemCount == dataCount + dataGroup.size + 1 + 1)
             assert(itemType(0) == RecyctAdapter.TYPE_HEADER)
             assert(itemType(1) == RecyctAdapter.TYPE_SECTION_TITLE)
@@ -109,8 +118,11 @@ class SectionTitleStrategyTest {
         )
         val dataCount = dataGroup.flatten().size
         var isLoadMore = false
+        val hasFooter = true
         HeaderDecorator(
-            FooterDecorator(SectionTitleStrategy(dataGroup) { TYPE_DEFAULT }) { isLoadMore }).run {
+            FooterDecorator(
+                SectionTitleStrategy(dataGroup) { TYPE_DEFAULT },
+                { isLoadMore }) { hasFooter }).run {
             assert(itemCount == dataCount + dataGroup.size + 1 + 1)
             assert(itemType(0) == RecyctAdapter.TYPE_HEADER)
             assert(itemType(1) == RecyctAdapter.TYPE_SECTION_TITLE)
