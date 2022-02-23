@@ -22,7 +22,7 @@ class BasicStrategy(
     }
 
     override val itemCount: Int
-        get() = dataGroup.flatten().size
+        get() = dataGroup.sumOf { it.size }
     override val root: TypeStrategy = this
 }
 
@@ -49,7 +49,7 @@ class SectionTitleStrategy(
     }
 
     override val itemCount: Int
-        get() = dataGroup.flatten().size + dataGroup.size
+        get() = dataGroup.sumOf { it.size } + dataGroup.size
 
     override val root: TypeStrategy = this
 }
@@ -78,17 +78,22 @@ class HeaderDecorator(
 
 class FooterDecorator(
     private val base: TypeStrategy,
-    var isLoadMoreDelegate: () -> Boolean
+    val hasLoadMoreDelegate: () -> Boolean,
+    val hasFooterItemDelegate: () -> Boolean
 ) : StrategyDecorator(base) {
 
     override fun itemType(adapterIndex: Int): Int {
         return when (adapterIndex) {
-            itemCount - 1 -> TYPE_FOOTER.takeIf { !isLoadMoreDelegate() } ?: TYPE_LOAD_MORE
+            itemCount - 1 -> when {
+                hasLoadMoreDelegate() -> TYPE_LOAD_MORE
+                hasFooterItemDelegate() -> TYPE_FOOTER
+                else -> base.itemType(adapterIndex)
+            }
             else -> base.itemType(adapterIndex)
         }
     }
 
     override val itemCount: Int
-        get() = 1 + base.itemCount
+        get() = base.itemCount + if (hasLoadMoreDelegate() || hasFooterItemDelegate()) 1 else 0
 
 }

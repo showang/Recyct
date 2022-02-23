@@ -42,15 +42,17 @@ class MainActivity : AppCompatActivity() {
         }.root)
     }
 
+    private val sectionTitleData = mutableListOf("Section 1", "Section 2")
+
     private fun ActivityMainBinding.initRecyclerView() {
         recycler.adapter = object : RecyctAdapter(data1, data2) {
             override fun customViewHolderTypes(dataIndex: Int): Int = viewTypeDelegate(dataIndex)
         }.apply {
             registerHeader(HeaderItem(), -1, onHeaderClick)
-            registerFooter(FooterItem(), 100, onFooterClick)
+//            registerFooter(FooterItem(), 100, onFooterClick)
             register(MyRecyctItem("A", Color.RED), 0, toast("Type A"))
             register(MyRecyctItem("B", Color.LTGRAY), 1, toast("Type B"))
-            sectionsByGroup(SectionTitleItem(), listOf("Section 1", "Section 2"))
+            sectionsByGroup(SectionTitleItem()) { index -> sectionTitleData[index] }
             enableLoadMore = true
             defaultLoadMore(::onLoadMore)
             adapter = this
@@ -73,7 +75,8 @@ class MainActivity : AppCompatActivity() {
                         else -> 2
                     }
                 }
-                appendDataGroup(data3, "Section 3")
+                sectionTitleData.add("Section 3")
+                appendDataGroup(data3)
                 notifyDataAppended(data3.size)
             }
         }
@@ -101,7 +104,7 @@ class MainActivity : AppCompatActivity() {
 class HeaderItem : RecyctItem() {
     override fun create(inflater: LayoutInflater, parent: ViewGroup) =
         object : BindingRecyctViewHolder<ItemHeaderBinding>(
-            ItemHeaderBinding.inflate(inflater, parent, false), this
+            ItemHeaderBinding.inflate(inflater, parent, false)
         ) {
             override fun bind(data: Any, dataIndex: Int, itemIndex: Int) {
                 binding.headerText.text =
@@ -113,8 +116,7 @@ class HeaderItem : RecyctItem() {
 class FooterItem : RecyctItem() {
     override fun create(inflater: LayoutInflater, parent: ViewGroup) = object :
         BindingRecyctViewHolder<ItemFooterBinding>(
-            ItemFooterBinding.inflate(inflater, parent, false),
-            this@FooterItem
+            ItemFooterBinding.inflate(inflater, parent, false)
         ) {
         override fun bind(data: Any, dataIndex: Int, itemIndex: Int) {
             binding.footerText.text =
@@ -126,7 +128,7 @@ class FooterItem : RecyctItem() {
 class SectionTitleItem : RecyctItem() {
     override fun create(inflater: LayoutInflater, parent: ViewGroup) =
         object : BindingRecyctViewHolder<ItemSectionTitleBinding>(
-            ItemSectionTitleBinding.inflate(inflater, parent, false), this
+            ItemSectionTitleBinding.inflate(inflater, parent, false)
         ) {
             override fun bind(data: Any, dataIndex: Int, itemIndex: Int) {
                 (data as? String)?.let {
@@ -146,8 +148,7 @@ class SectionTitleItem : RecyctItem() {
 class MyRecyctItem(private val type: String, private val color: Int) : RecyctItem() {
     override fun create(inflater: LayoutInflater, parent: ViewGroup) = object :
         BindingRecyctViewHolder<ItemBasicBinding>(
-            ItemBasicBinding.inflate(inflater, parent, false),
-            this
+            ItemBasicBinding.inflate(inflater, parent, false)
         ) {
         override fun bind(data: Any, dataIndex: Int, itemIndex: Int) {
             val dataString = when (data) {
