@@ -1,13 +1,19 @@
 package me.showang.recyct
 
+import android.util.Log
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import me.showang.recyct.groups.*
 import me.showang.recyct.items.DefaultLoadMoreItem
+import me.showang.recyct.items.LoadMoreItem
 import me.showang.recyct.items.RecyctItem
+import me.showang.recyct.items.viewholder.LoadMoreViewHolder
 import me.showang.recyct.items.viewholder.RecyctViewHolder
 
 @Suppress("unused")
@@ -48,8 +54,8 @@ open class RecyctAdapter(
         sectionCount - 1
     }
 
-    var enableLoadMore: Boolean by didSet(false, ::updateLoadMoreState)
-    var isLoadMoreFail: Boolean by didSet(false, ::updateLoadMoreState)
+    var enableLoadMore: Boolean = false
+    private var isLoadMoreFail: Boolean = false
     private val isLoadMoreEnabled get() = enableLoadMore && loadMoreItem != null
 
     fun appendDataGroup(dataList: List<Any>) {
@@ -124,9 +130,12 @@ open class RecyctAdapter(
     }
 
     fun defaultLoadMore(loadMoreCallback: (() -> Unit)? = null) {
-        loadMoreItem = DefaultLoadMoreItem(loadMoreCallback) {
-            isLoadMoreFail = false
-        }
+        loadMoreItem = DefaultLoadMoreItem(loadMoreCallback)
+        decorateStrategy()
+    }
+
+    fun registerLoadMore(customLoadMoreItem: LoadMoreItem) {
+        loadMoreItem = customLoadMoreItem
         decorateStrategy()
     }
 
@@ -146,10 +155,12 @@ open class RecyctAdapter(
     }
 
     private fun updateLoadMoreState(loadMoreEnabled: Boolean) {
-        footerItem?.run {
-            notifyItemChanged(itemCount - 1)
-        } ?: if (loadMoreEnabled) notifyItemInserted(itemCount)
-        else notifyItemRemoved(itemCount - 1)
+        CoroutineScope(IO).launch {
+            footerItem?.run {
+                notifyItemChanged(itemCount - 1)
+            } ?: if (loadMoreEnabled) notifyItemInserted(itemCount)
+            else notifyItemRemoved(itemCount - 1)
+        }
     }
 
     final override fun getItemViewType(position: Int): Int {
@@ -171,17 +182,19 @@ open class RecyctAdapter(
             create(LayoutInflater.from(parent.context), parent)?.apply {
                 defaultClickDelegate = itemClickDelegate
             }
-        } ?: throw Error(
-            "No RecyctItem registered with type: ${
-                when (type) {
-                    TYPE_HEADER -> "TYPE_HEADER"
-                    TYPE_FOOTER -> "TYPE_FOOTER"
-                    TYPE_LOAD_MORE -> "TYPE_LOAD_MORE"
-                    TYPE_SECTION_TITLE -> "TYPE_SECTION_TITLE"
-                    else -> viewHolderTypeMap[type].toString()
-                }
-            }"
-        )
+        } ?: object : RecyclerView.ViewHolder(View(parent.context)) {}.also {
+            Log.e(
+                javaClass.simpleName, "No RecyctItem registered with type: ${
+                    when (type) {
+                        TYPE_HEADER -> "TYPE_HEADER"
+                        TYPE_FOOTER -> "TYPE_FOOTER"
+                        TYPE_LOAD_MORE -> "TYPE_LOAD_MORE"
+                        TYPE_SECTION_TITLE -> "TYPE_SECTION_TITLE"
+                        else -> viewHolderTypeMap[type].toString()
+                    }
+                }"
+            )
+        }
 
     final override fun getItemCount(): Int {
         return currentStrategy.itemCount
@@ -192,12 +205,14 @@ open class RecyctAdapter(
         position: Int
     ) {
         val vh = holder as? RecyctViewHolder
-            ?: throw Error("ViewHolder is not a RecycHolder")
+            ?: null.also {
+                Log.e(javaClass.simpleName, "ViewHolder is not a RecycHolder")
+            }
         itemDataPair(position, ::getItemViewType)?.let { (data, index) ->
-            vh.currentData = data
-            vh.currentDataIndex = index
-            vh.currentItemIndex = position
-            vh.bind(data, index, position)
+            vh?.currentData = data
+            vh?.currentDataIndex = index
+            vh?.currentItemIndex = position
+            vh?.bind(data, index, position)
         }
     }
 
@@ -224,6 +239,29 @@ open class RecyctAdapter(
         val size = itemCount
         dataGroup.clear()
         notifyItemRangeRemoved(0, size)
+    }
+
+    override fun onViewDetachedFromWindow(holder: RecyclerView.ViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        if (holder is LoadMoreViewHolder) {
+            holder.itemView.post {
+                isLoadMoreFail = false
+            }
+        }
+    }
+
+    fun onLoadMoreFail() {
+        isLoadMoreFail = true
+        if (isLoadMoreEnabled) {
+            notifyItemChanged(itemCount - 1)
+        }
+    }
+
+    fun resetLoadMoreFail() {
+        isLoadMoreFail = false
+        if (isLoadMoreEnabled) {
+            notifyItemChanged(itemCount - 1)
+        }
     }
 
     suspend fun notifyGroupDataChanged(

@@ -4,8 +4,11 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
@@ -13,8 +16,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.showang.recyct.RecyctAdapter
 import me.showang.recyct.example.databinding.*
+import me.showang.recyct.items.LoadMoreItem
 import me.showang.recyct.items.RecyctItem
 import me.showang.recyct.items.viewholder.BindingRecyctViewHolder
+import me.showang.recyct.items.viewholder.LoadMoreViewHolder
 import org.koin.android.ext.android.inject
 import org.koin.core.qualifier.named
 
@@ -31,6 +36,7 @@ class MainActivity : AppCompatActivity() {
     private var viewTypeDelegate: (Int) -> Int = { index ->
         when {
             index < data1.size -> 0
+            index == data1.size -> 5 // Error type in section 2 first item
             else -> 1
         }
     }
@@ -49,19 +55,27 @@ class MainActivity : AppCompatActivity() {
             override fun customViewHolderTypes(dataIndex: Int): Int = viewTypeDelegate(dataIndex)
         }.apply {
             registerHeader(HeaderItem(), -1, onHeaderClick)
-//            registerFooter(FooterItem(), 100, onFooterClick)
+            registerFooter(FooterItem(), 100, onFooterClick)
             register(MyRecyctItem("A", Color.RED), 0, toast("Type A"))
             register(MyRecyctItem("B", Color.LTGRAY), 1, toast("Type B"))
             sectionsByGroup(SectionTitleItem()) { index -> sectionTitleData[index] }
             enableLoadMore = true
-            defaultLoadMore(::onLoadMore)
+            registerLoadMore(CustomLoadMore(::onLoadMore, ::resetLoadMoreFail))
             adapter = this
         }
     }
 
     private var loadMoreJob: Job? = null
-
+    private var loadMoreFailCounter = 0
     private fun onLoadMore() {
+        if (loadMoreFailCounter < 2) {
+            CoroutineScope(Main).launch {
+                delay(1000)
+                adapter?.onLoadMoreFail()
+            }
+            loadMoreFailCounter++
+            return
+        }
         if (loadMoreJob != null) return
         loadMoreJob = CoroutineScope(Main).launch {
             adapter?.run {
@@ -163,4 +177,38 @@ class MyRecyctItem(private val type: String, private val color: Int) : RecyctIte
             }
         }
     }
+}
+
+class CustomLoadMore(
+    private val onLoadMoreDelegate: () -> Unit,
+    private val retryLoadMoreDelegate: () -> Unit
+) : LoadMoreItem() {
+
+    override fun createViewHolder(inflater: LayoutInflater, parent: ViewGroup): LoadMoreViewHolder {
+        return object : LoadMoreViewHolder(R.layout.item_custom_load_more, inflater, parent) {
+
+            private val errorText: TextView by id(R.id.errorText)
+            private val loadingText: TextView by id(R.id.loadingText)
+            private val progress: ProgressBar by id(R.id.progress)
+
+            init {
+                itemView.setOnClickListener {
+                    if (currentData == true) {
+                        retryLoadMoreDelegate()
+                    }
+                }
+            }
+
+            override fun bind(isLoadMoreFailed: Boolean, adapterIndex: Int) {
+                errorText.isVisible = isLoadMoreFailed
+                progress.isVisible = !isLoadMoreFailed
+                loadingText.isVisible = !isLoadMoreFailed
+                if (!isLoadMoreFailed) {
+                    itemView.post(onLoadMoreDelegate)
+                }
+            }
+
+        }
+    }
+
 }

@@ -8,7 +8,7 @@ import me.showang.recyct.databinding.ItemLoadMoreBinding
 
 class DefaultLoadMoreItem(
     private val onLoadMoreCallback: (() -> Unit)? = null,
-    private val retryDelegate: (() -> Unit)
+    private val retryDelegate: (() -> Unit)? = null
 ) : RecyctItem() {
 
     override fun create(inflater: LayoutInflater, parent: ViewGroup) =
@@ -17,7 +17,7 @@ class DefaultLoadMoreItem(
         ) {
             init {
                 binding.retryButton.setOnClickListener {
-                    retryDelegate.invoke()
+                    retryDelegate?.invoke()
                 }
             }
 

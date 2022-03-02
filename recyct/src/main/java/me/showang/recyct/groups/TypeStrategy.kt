@@ -58,7 +58,7 @@ abstract class StrategyDecorator(
     private val baseStrategy: TypeStrategy
 ) : TypeStrategy {
     override val root: TypeStrategy
-        get() = baseStrategy
+        get() = baseStrategy.root
 }
 
 class HeaderDecorator(
